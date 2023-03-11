@@ -1,0 +1,13 @@
+CMake for windows must be installed.
+
+chdir to this directory and run
+
+cmake .
+
+to force Win32,
+
+cmake . -A Win32
+
+to force x64,
+
+cmake . -A x64
