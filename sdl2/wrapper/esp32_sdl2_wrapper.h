@@ -66,6 +66,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <SDL.h>
 
 #define IRAM_ATTR
 #define DRAM_ATTR
@@ -82,7 +83,12 @@ typedef uint32_t TickType_t;
 
 inline void vTaskDelay(const uint32_t xTicksToDelay) {}
 
-inline int64_t esp_timer_get_time() { return 0; }
+inline int64_t esp_timer_get_time() {
+    const Uint64 end = SDL_GetPerformanceCounter();
+    const static Uint64 freq = SDL_GetPerformanceFrequency();
+    const double seconds = end / static_cast<double>(freq);
+    return int64_t(1000000 * seconds);
+}
 
 inline UBaseType_t xPortGetCoreID() { return 0; }
 

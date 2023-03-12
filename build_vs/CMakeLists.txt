@@ -60,6 +60,7 @@ add_executable(${PROJECT_NAME}
     ../src/Tape.cpp
     ../src/Video.cpp
     ../src/Z80_JLS.cpp
+
     ../include/AySound.h
     ../include/CaptureBMP.h
     ../include/Config.h
@@ -75,6 +76,7 @@ add_executable(${PROJECT_NAME}
     ../include/Video.h
     ../include/Z80_JLS/z80.h
     ../include/Z80_JLS/z80operations.h
+
     ../sdl2/wrapper/esp32_sdl2_wrapper.h
     ../sdl2/wrapper/wrap_ESP32Lib.h
     ../sdl2/wrapper/wrap_ESP32Lib.cpp
@@ -83,6 +85,21 @@ add_executable(${PROJECT_NAME}
     ../sdl2/wrapper/sdmmc_cmd.h
     ../sdl2/wrapper/main.cpp
     ../sdl2/wrapper/wrap_FileUtils.cpp
+
+    ../sdl2/wrapper/bitluni/Graphics/Font.h
+    ../sdl2/wrapper/bitluni/Graphics/Graphics.h
+    ../sdl2/wrapper/bitluni/Graphics/GraphicsR2G2B2S2Swapped.h
+    ../sdl2/wrapper/bitluni/Graphics/Image.h
+    ../sdl2/wrapper/bitluni/Graphics/ImageDrawer.h
+    ../sdl2/wrapper/bitluni/Tools/Log.h
+    ../sdl2/wrapper/bitluni/I2S/DMABufferDescriptor.h
+    ../sdl2/wrapper/bitluni/I2S/I2S.h
+    ../sdl2/wrapper/bitluni/I2S/I2S.cpp
+    ../sdl2/wrapper/bitluni/VGA/Mode.h
+    ../sdl2/wrapper/bitluni/VGA/PinConfig.h
+    ../sdl2/wrapper/bitluni/VGA/VGA.cpp
+    ../sdl2/wrapper/bitluni/VGA/VGA.h
+    ../sdl2/wrapper/bitluni/VGA/VGA6Bit.h
 )
 
 if(MSVC)
@@ -98,6 +115,7 @@ target_include_directories(
 	${PROJECT_NAME} PUBLIC ${SDL2_PATH}/include
 	# ${PROJECT_NAME} PUBLIC ${SDL2_IMAGE_PATH}/include
 	${PROJECT_NAME} PUBLIC ../include
+	${PROJECT_NAME} PUBLIC ../src
 	${PROJECT_NAME} PUBLIC ../sdl2/wrapper
 )
 

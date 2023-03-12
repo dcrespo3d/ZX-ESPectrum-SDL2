@@ -1,12 +1,19 @@
-#ifndef wrap_ESP32Lib_h
-#define wrap_ESP32Lib_h
-
-#include "bitluni/VGA/VGA6Bit.h"
-
 /*
+	Author: bitluni 2019
+	License: 
+	Creative Commons Attribution ShareAlike 4.0
+	https://creativecommons.org/licenses/by-sa/4.0/
+	
+	For further details check out: 
+		https://youtube.com/bitlunislab
+		https://github.com/bitluni
+		http://bitluni.net
+*/
+#pragma once
+
 class Mode
 {
-public:
+  public:
 	int hFront;
 	int hSync;
 	int hBack;
@@ -36,19 +43,19 @@ public:
 		const int vSyncPolarity = 1,
 		const float aspect = 1.f)
 		: hFront(hFront),
-		hSync(hSync),
-		hBack(hBack),
-		hRes(hRes),
-		vFront(vFront),
-		vSync(vSync),
-		vBack(vBack),
-		vRes(vRes),
-		vDiv(vDiv),
-		pixelClock(pixelClock),
-		hSyncPolarity(hSyncPolarity),
-		vSyncPolarity(vSyncPolarity),
-		aspect(aspect),
-		activeLineCount(vRes / vDiv)
+		  hSync(hSync),
+		  hBack(hBack),
+		  hRes(hRes),
+		  vFront(vFront),
+		  vSync(vSync),
+		  vBack(vBack),
+		  vRes(vRes),
+		  vDiv(vDiv),
+		  pixelClock(pixelClock),
+		  hSyncPolarity(hSyncPolarity),
+		  vSyncPolarity(vSyncPolarity),
+		  aspect(aspect),
+		  activeLineCount(vRes / vDiv)
 	{
 	}
 
@@ -75,7 +82,7 @@ public:
 		int hb = int((hSync + hBack - hs / f) * f + 3) & 0xfffffffc;
 		int hr = xres;
 		int hf = int((pixelsPerLine() - (hs + hb + hr) / f) * f + 3) & 0xfffffffc;
-
+		
 		int vd = fixedYDivider ? fixedYDivider : (vRes / yres);
 		int vr = yres * vd;
 		int vf = vFront + vRes / 2 - vr / 2;
@@ -85,12 +92,12 @@ public:
 	}
 
 	template<class Output>
-	void print(Output& output) const
+	void print(Output &output) const
 	{
 		output.print("hFront: ");
 		output.println(hFront);
 		output.print("hSync: ");
-		output.println(hSync);
+ 		output.println(hSync);
 		output.print("hBack: ");
 		output.println(hBack);
 		output.print("hRes: ");
@@ -113,57 +120,3 @@ public:
 		output.println(vSyncPolarity);
 	}
 };
-
-class Font
-{
-  public:
-	const int firstChar;
-	const int charCount;
-	const unsigned char *pixels;
-	const int charWidth;
-	const int charHeight;
-	Font(int charWidth, int charHeight, const unsigned char *pixels, int firstChar = 32, int charCount = 96)
-		:firstChar(firstChar),
-		charCount(charCount),
-		pixels(pixels),
-		charWidth(charWidth),
-		charHeight(charHeight)
-	{
-	}
-
-	bool valid(char ch) const
-	{
-		return ch >= firstChar && ch < firstChar + charCount;
-	}
-};
-
-class VGA6Bit
-{
-public:
-	typedef unsigned char Color;
-	static const Color RGBAXMask = 0x3f;
-	static const Color SBits = 0xc0;
-
-	static const Mode MODE320x240;
-	static const Mode MODE360x200;
-
-	Color** backBuffer;
-
-	int xres;
-	int yres;
-
-	bool init(const Mode& mode, const int* redPins, const int* greenPins, const int* bluePins, const int hsyncPin, const int vsyncPin, const int clockPin = -1) { return true; }
-
-    void setCursor(int x, int y) {}
-    void setTextColor(long front, long back) {}
-    void print(const char* str) {}
-
-    void setFont(Font& font) {}
-    void rect(int x, int y, int w, int h, unsigned char color) {}
-    void fillRect(int x, int y, int w, int h, unsigned char color) {}
-    void line(int x1, int y1, int x2, int y2, unsigned char color) {}
-    void println(const char* str) {}
-};
-*/
-
-#endif
