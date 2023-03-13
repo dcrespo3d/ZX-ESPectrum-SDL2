@@ -3,3 +3,5 @@
 *.ipdb
 *.pdb
 *.ilk
+x64/data
+x86/data
