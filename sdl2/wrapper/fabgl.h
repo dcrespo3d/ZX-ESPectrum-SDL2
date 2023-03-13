@@ -344,10 +344,10 @@ namespace fabgl
 
         void setLayout(KeyboardLayout const * layout) {};
 
-        bool isVKDown(VirtualKey virtualKey) { return false; }
+		bool isVKDown(VirtualKey virtualKey);
 
-        int virtualKeyAvailable() { return 0; }
-        bool getNextVirtualKey(VirtualKeyItem * item, int timeOutMS = -1) { return false; }
+		int virtualKeyAvailable();
+		bool getNextVirtualKey(VirtualKeyItem* item, int timeOutMS = -1);
 
     };
 

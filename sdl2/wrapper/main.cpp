@@ -19,6 +19,9 @@
 
 #include "SDL.h"
 
+extern void initKeyEventQueue();
+extern void pushToKeyEventQueue(uint32_t type, SDL_Scancode ekey);
+
 bool isLittleEndian()
 {
 	uint16_t val16 = 0x1;
@@ -99,7 +102,7 @@ int main(int argc, char* argv[])
 	{
 		window = SDL_CreateWindow
 		(
-			"SDL2",
+			"ZX-ESPectrum-SDL2",
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 			1080, 600,
 			SDL_WINDOW_SHOWN
@@ -145,6 +148,8 @@ int main(int argc, char* argv[])
 	unsigned int frames = 0;
 	Uint64 start = SDL_GetPerformanceCounter();
 
+	initKeyEventQueue();
+
 	while (running)
 	{
 
@@ -153,17 +158,29 @@ int main(int argc, char* argv[])
 
 		while (SDL_PollEvent(&event))
 		{
-			if ((SDL_QUIT == event.type) ||
-				(SDL_KEYDOWN == event.type && SDL_SCANCODE_ESCAPE == event.key.keysym.scancode))
+			if (SDL_QUIT == event.type)
 			{
 				running = false;
 				break;
 			}
-			if (SDL_KEYDOWN == event.type && SDL_SCANCODE_L == event.key.keysym.scancode)
+
+			if (SDL_KEYDOWN == event.type || SDL_KEYUP == event.type)
 			{
-				useLocktexture = !useLocktexture;
-				std::cout << "Using " << (useLocktexture ? "SDL_LockTexture() + memcpy()" : "SDL_UpdateTexture()") << std::endl;
+				pushToKeyEventQueue(event.type, event.key.keysym.scancode);
 			}
+
+
+			//if ((SDL_QUIT == event.type) ||
+			//	(SDL_KEYDOWN == event.type && SDL_SCANCODE_ESCAPE == event.key.keysym.scancode))
+			//{
+			//	running = false;
+			//	break;
+			//}
+			//if (SDL_KEYDOWN == event.type && SDL_SCANCODE_L == event.key.keysym.scancode)
+			//{
+			//	useLocktexture = !useLocktexture;
+			//	std::cout << "Using " << (useLocktexture ? "SDL_LockTexture() + memcpy()" : "SDL_UpdateTexture()") << std::endl;
+			//}
 		}
 
 		// splat down some random pixels
@@ -178,6 +195,11 @@ int main(int argc, char* argv[])
 		//	pixels[offset + 2] = rand() % 256;        // r
 		//	pixels[offset + 3] = SDL_ALPHA_OPAQUE;    // a
 		//}
+
+		//SDL_PumpEvents();
+
+		//const uint8_t* sdlkeys = SDL_GetKeyboardState(NULL);
+		//if (sdlkeys[SDL_SCANCODE_RETURN]) printf("return pressed\n");
 
 		// quick & dirty framebuffer dump
 		uint8_t ctable[] = { 0, 128, 192, 255 };

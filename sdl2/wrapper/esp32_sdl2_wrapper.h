@@ -90,6 +90,14 @@ inline int64_t esp_timer_get_time() {
     return int64_t(1000000 * seconds);
 }
 
+inline void esp32_wrapper_sleep_ms(uint32_t time_ms) {
+    SDL_Delay(time_ms);
+}
+
+inline void esp32_wrapper_sleep_menukey() {
+    esp32_wrapper_sleep_ms(50);
+}
+
 inline UBaseType_t xPortGetCoreID() { return 0; }
 
 inline void* xQueueCreate(const UBaseType_t uxQueueLength, const UBaseType_t uxItemSize) { return NULL; }
