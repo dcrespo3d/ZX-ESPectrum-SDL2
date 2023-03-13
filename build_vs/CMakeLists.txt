@@ -29,7 +29,7 @@ else()
     set(MY_ARCH x32)
 endif()
 
-set(MY_BIN_DIR ../../../bin/${MY_ARCH})
+set(MY_BIN_DIR ../bin/${MY_ARCH})
 
 # https://stackoverflow.com/a/7750816
 # First for the generic no-config case (e.g. with mingw)

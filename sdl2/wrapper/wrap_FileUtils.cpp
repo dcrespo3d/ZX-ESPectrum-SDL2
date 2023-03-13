@@ -1,6 +1,6 @@
 #include "FileUtils.h"
 
-string FileUtils::MountPoint = "/data"; // MOUNT_POINT_SPIFFS; // Start with SPIFFS
+string FileUtils::MountPoint = MOUNT_POINT_SPIFFS; // Start with SPIFFS
 bool FileUtils::SDReady = false;
 sdmmc_card_t* FileUtils::card;
 
