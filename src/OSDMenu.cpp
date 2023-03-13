@@ -244,6 +244,9 @@ unsigned short OSD::menuRun(string new_menu) {
 
     newMenu(new_menu);
     while (1) {
+#ifdef ESP32_SDL2_WRAPPER
+        esp32_wrapper_sleep_menukey();
+#endif
         ESPectrum::readKbd(&Menukey);
         if (!Menukey.down) continue;
         if (Menukey.vk == fabgl::VK_UP) {
@@ -470,6 +473,9 @@ string OSD::menuFile(string filedir, string title, string extensions) {
     menuDraw();
 
     while (1) {
+#ifdef ESP32_SDL2_WRAPPER
+        esp32_wrapper_sleep_menukey();
+#endif
         ESPectrum::readKbd(&Menukey);
         if (!Menukey.down) continue;
         // // Search first ocurrence of letter if we're not on that letter yet
