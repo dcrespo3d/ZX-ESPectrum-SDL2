@@ -490,12 +490,12 @@ void IRAM_ATTR ESPectrum::processKeyboard() {
                 continue;
             }
 
-            if (KeytoESP == fabgl::VK_LCTRL) {
+            if (KeytoESP == fabgl::VK_LSHIFT || KeytoESP == fabgl::VK_RSHIFT) {
                 bitWrite(Ports::port[0], 0, !Kdown); // CAPS SHIFT                
                 continue;
             }
 
-            if (KeytoESP == fabgl::VK_RCTRL) {
+            if (KeytoESP == fabgl::VK_LCTRL || KeytoESP == fabgl::VK_RCTRL) {
                 bitWrite(Ports::port[7], 1, !Kdown); // SYMBOL SHIFT
                 continue;
             }
@@ -661,36 +661,31 @@ void IRAM_ATTR ESPectrum::processKeyboard() {
                 // Kempston
                 Ports::port[0x1f] = 0;
 
-                bitWrite(Ports::port[0x1f], 0, keyboard->isVKDown(fabgl::VK_KP_RIGHT));
-                bitWrite(Ports::port[0x1f], 1, keyboard->isVKDown(fabgl::VK_KP_LEFT));
-                bitWrite(Ports::port[0x1f], 2, keyboard->isVKDown(fabgl::VK_KP_DOWN) || keyboard->isVKDown(fabgl::VK_KP_CENTER));
-                bitWrite(Ports::port[0x1f], 3, keyboard->isVKDown(fabgl::VK_KP_UP));
+                bitWrite(Ports::port[0x1f], 0, keyboard->isVKDown(fabgl::VK_RIGHT));
+                bitWrite(Ports::port[0x1f], 1, keyboard->isVKDown(fabgl::VK_LEFT));
+                bitWrite(Ports::port[0x1f], 2, keyboard->isVKDown(fabgl::VK_DOWN));
+                bitWrite(Ports::port[0x1f], 3, keyboard->isVKDown(fabgl::VK_UP));
                 bitWrite(Ports::port[0x1f], 4, keyboard->isVKDown(fabgl::VK_RALT));
         
             } else {
 
                 // Cursor
-                if (KeytoESP == fabgl::VK_KP_DOWN) {
+                if (KeytoESP == fabgl::VK_DOWN) {
                     bitWrite(Ports::port[4], 4, !Kdown);
                     continue;
                 }
 
-                if (KeytoESP == fabgl::VK_KP_CENTER) {
-                    bitWrite(Ports::port[4], 4, !Kdown);
-                    continue;
-                }
-
-                if (KeytoESP == fabgl::VK_KP_UP) {
+                if (KeytoESP == fabgl::VK_UP) {
                     bitWrite(Ports::port[4], 3, !Kdown);
                     continue;
                 }
 
-                if (KeytoESP == fabgl::VK_KP_LEFT) {
+                if (KeytoESP == fabgl::VK_LEFT) {
                     bitWrite(Ports::port[3], 4, !Kdown);
                     continue;
                 }
 
-                if (KeytoESP == fabgl::VK_KP_RIGHT) {
+                if (KeytoESP == fabgl::VK_RIGHT) {
                     bitWrite(Ports::port[4], 2, !Kdown);
                     continue;
                 }
