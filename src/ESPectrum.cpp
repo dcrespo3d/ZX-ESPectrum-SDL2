@@ -790,7 +790,7 @@ void IRAM_ATTR ESPectrum::audioTask(void *unused) {
 
     // xQueueReceive(audioTaskQueue, &param, portMAX_DELAY);
 
-    // FILE *f = fopen("/sd/c/audioout.raw", "w");
+    // FILE *f = fopen("/sd/c/audioout.raw", "wb");
     // if (f==NULL)
     // {
     //     printf("Error opening file for write.\n");
