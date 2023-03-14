@@ -153,6 +153,8 @@ namespace fabgl
 
     bool Keyboard::getNextVirtualKey(VirtualKeyItem* item, int timeOutMS)
     {
+        item->down = false;
+
         if (keyEventQueue.empty()) return false;
         //printf("queue size: %d\n", keyEventQueue.size());
 
