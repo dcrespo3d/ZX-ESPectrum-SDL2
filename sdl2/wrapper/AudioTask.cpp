@@ -56,7 +56,7 @@ static void audioCallback(void* userdata, Uint8* stream, int len)
 	memcpy(stream, buf, len);
 	delete[] buf;
 
-	printf("queue size: %d\n", queue.size());
+	//printf("queue size: %d\n", queue.size());
 
 
 	// sawtooth

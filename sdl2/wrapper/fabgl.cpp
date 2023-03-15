@@ -175,4 +175,58 @@ namespace fabgl
         return true;
     }
 
+    SquareWaveformGenerator::SquareWaveformGenerator()
+        : m_phaseInc(0),
+        m_phaseAcc(0),
+        m_frequency(0),
+        m_lastSample(0),
+        m_dutyCycle(127)
+    {
+    }
+
+
+    void SquareWaveformGenerator::setFrequency(int value) {
+        if (m_frequency != value) {
+            m_frequency = value;
+            m_phaseInc = (((uint32_t)m_frequency * 256) << 11) / sampleRate();
+        }
+    }
+
+
+    // dutyCycle: 0..255 (255=100%)
+    void SquareWaveformGenerator::setDutyCycle(int dutyCycle)
+    {
+        m_dutyCycle = dutyCycle;
+    }
+
+
+    int SquareWaveformGenerator::getSample() {
+        if (m_frequency == 0 || duration() == 0) {
+            if (m_lastSample > 0)
+                --m_lastSample;
+            else if (m_lastSample < 0)
+                ++m_lastSample;
+            else
+                m_phaseAcc = 0;
+            return m_lastSample;
+        }
+
+        uint32_t index = m_phaseAcc >> 11;
+        // int sample = (index <= m_dutyCycle ? 127 : -127);
+        int sample = (index <= m_dutyCycle ? 255 : 0);
+
+        // process volume
+        sample = sample * volume() / 127;
+
+        m_lastSample = sample;
+
+        m_phaseAcc = (m_phaseAcc + m_phaseInc) & 0x7ffff;
+
+        decDuration();
+
+        return sample;
+    }
+
+
+
 }

@@ -322,68 +322,106 @@ namespace fabgl
 		uint8_t    SCROLLLOCK : 1;  /**< SCROLLLOCK key state at the time of this virtual key event */
 	};
 
-    struct KeyboardLayout {
-    };
+	struct KeyboardLayout {
+	};
 
-    extern const KeyboardLayout USLayout;
-    extern const KeyboardLayout UKLayout;
-    extern const KeyboardLayout GermanLayout;
-    extern const KeyboardLayout ItalianLayout;
-    extern const KeyboardLayout SpanishLayout;
-    extern const KeyboardLayout FrenchLayout;
-    extern const KeyboardLayout BelgianLayout;
-    extern const KeyboardLayout NorwegianLayout;
-    extern const KeyboardLayout JapaneseLayout;
+	extern const KeyboardLayout USLayout;
+	extern const KeyboardLayout UKLayout;
+	extern const KeyboardLayout GermanLayout;
+	extern const KeyboardLayout ItalianLayout;
+	extern const KeyboardLayout SpanishLayout;
+	extern const KeyboardLayout FrenchLayout;
+	extern const KeyboardLayout BelgianLayout;
+	extern const KeyboardLayout NorwegianLayout;
+	extern const KeyboardLayout JapaneseLayout;
 
-    class Keyboard
-    {
-    public:
-        void suspendPort() {}
-        void resumePort() {};
-        bool setScancodeSet(int value) { return true; }
+	class Keyboard
+	{
+	public:
+		void suspendPort() {}
+		void resumePort() {};
+		bool setScancodeSet(int value) { return true; }
 
-        void setLayout(KeyboardLayout const * layout) {};
+		void setLayout(KeyboardLayout const* layout) {};
 
 		bool isVKDown(VirtualKey virtualKey);
 
 		int virtualKeyAvailable();
 		bool getNextVirtualKey(VirtualKeyItem* item, int timeOutMS = -1);
 
-    };
+	};
 
-    class PS2Controller
-    {
-    public:
+	class PS2Controller
+	{
+	public:
 		PS2Controller();
 		~PS2Controller();
 
 		static void begin(PS2Preset preset = PS2Preset::KeyboardPort0_MousePort1, KbdMode keyboardMode = KbdMode::CreateVirtualKeysQueue);
 
-        static Keyboard* keyboard() { return s_keyboard; }
+		static Keyboard* keyboard() { return s_keyboard; }
 
-    private:
-        static Keyboard* s_keyboard;
-        static PS2Controller* s_instance;
-    };
+	private:
+		static Keyboard* s_keyboard;
+		static PS2Controller* s_instance;
+	};
+
+	class WaveformGenerator {
+	public:
+		WaveformGenerator() : next(nullptr), m_sampleRate(0), m_volume(100), m_enabled(false), m_duration(-1), m_autoDestroy(false), m_autoDetach(false) { }
+		virtual ~WaveformGenerator() { }
+
+		virtual void setFrequency(int value) = 0;
+		void setDuration(uint32_t value) { m_duration = value; }
+		uint32_t duration() { return m_duration; }
+		void setAutoDetach(bool value) { m_autoDetach = value; }
+		bool autoDetach() { return m_autoDetach; }
+		void setAutoDestroy(bool value) { m_autoDestroy = value; m_autoDetach |= value; }
+		bool autoDestroy() { return m_autoDestroy; }
+		virtual int getSample() = 0;
+		void setVolume(int value) { m_volume = value; }
+		int volume() { return m_volume; }
+		bool enabled() { return m_enabled; }
+		void enable(bool value) { m_enabled = value; }
+		void setSampleRate(int value) { m_sampleRate = value; }
+		uint16_t sampleRate() { return m_sampleRate; }
+
+		WaveformGenerator* next;
+
+	protected:
+
+		void decDuration() { --m_duration; if (m_duration == 0) m_enabled = false; }
+
+	private:
+		uint16_t m_sampleRate;
+		int8_t   m_volume;
+		int8_t   m_enabled;   // 0 = disabled, 1 = enabled
+		uint32_t m_duration;  // number of samples to play (-1 = infinite)
+		bool     m_autoDestroy; // if true: this object needs to be destroyed by the sound generator when there are no more samples to play
+		bool     m_autoDetach;  // if true: this object needs to be autodetached from the sound generator when there are no more samples to play
+	};
+
+
+	class SquareWaveformGenerator : public WaveformGenerator
+	{
+	public:
+		SquareWaveformGenerator();
+
+		void setFrequency(int value);
+		void setDutyCycle(int dutyCycle);
+
+		int getSample();
+
+	private:
+		uint32_t m_phaseInc;
+		uint32_t m_phaseAcc;
+		uint16_t m_frequency;
+		int8_t   m_lastSample;
+		uint8_t  m_dutyCycle;
+
+	};
 }
 
-class WaveformGenerator
-{
-public:
-    void setSampleRate(int value) { m_sampleRate = value; }
-    void enable(bool) {}
-    void setVolume(int) {}
-    void setFrequency(int) {}
-
-    int getSample() { return 0; }
-private:
-    uint16_t m_sampleRate;
-};
-
-class SquareWaveformGenerator : public WaveformGenerator
-{
-
-};
-
+using fabgl::SquareWaveformGenerator;
 
 #endif
