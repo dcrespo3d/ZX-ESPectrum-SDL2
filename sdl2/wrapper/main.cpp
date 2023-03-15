@@ -201,24 +201,39 @@ int main(int argc, char* argv[])
 		//const uint8_t* sdlkeys = SDL_GetKeyboardState(NULL);
 		//if (sdlkeys[SDL_SCANCODE_RETURN]) printf("return pressed\n");
 
-		// quick & dirty framebuffer dump
+		// framebuffer dump
+		uint8_t* dst = &pixels[0];
 		uint8_t ctable[] = { 0, 128, 192, 255 };
 		int dx = VIDEO::vga.mode.hRes;
 		int dy = VIDEO::vga.mode.vRes / VIDEO::vga.mode.vDiv;
+		int dx4 = dx >> 2;
 		for (int y = 0; y < dy; y++)
 		{
 			const uint8_t* src = VIDEO::vga.backBuffer[y];
-			for (int x = 0; x < dx; x++)
+			uint8_t v;
+			for (int x = 0; x < dx; x += 4)
 			{
-				uint8_t v = *src++;
-				uint8_t r = ctable[(v & 0x30) >> 4];
-				uint8_t g = ctable[(v & 0x0C) >> 2];
-				uint8_t b = ctable[(v & 0x03) >> 0];
-				const unsigned int offset = (texWidth * 4 * y) + (x ^ 2) * 4;
-				pixels[offset + 0] = b;        // b
-				pixels[offset + 1] = g;        // g
-				pixels[offset + 2] = r;        // r
-				pixels[offset + 3] = SDL_ALPHA_OPAQUE;    // a
+				v = src[2];
+				*dst++ = ctable[(v & 0x03)     ]; // b
+				*dst++ = ctable[(v & 0x0C) >> 2]; // g
+				*dst++ = ctable[(v & 0x30) >> 4]; // r
+				*dst++ = SDL_ALPHA_OPAQUE;        // a
+				v = src[3];
+				*dst++ = ctable[(v & 0x03)     ]; // b
+				*dst++ = ctable[(v & 0x0C) >> 2]; // g
+				*dst++ = ctable[(v & 0x30) >> 4]; // r
+				*dst++ = SDL_ALPHA_OPAQUE;        // a
+				v = src[0];
+				*dst++ = ctable[(v & 0x03)     ]; // b
+				*dst++ = ctable[(v & 0x0C) >> 2]; // g
+				*dst++ = ctable[(v & 0x30) >> 4]; // r
+				*dst++ = SDL_ALPHA_OPAQUE;        // a
+				v = src[1];
+				*dst++ = ctable[(v & 0x03)     ]; // b
+				*dst++ = ctable[(v & 0x0C) >> 2]; // g
+				*dst++ = ctable[(v & 0x30) >> 4]; // r
+				*dst++ = SDL_ALPHA_OPAQUE;        // a
+				src += 4;
 			}
 		}
 
