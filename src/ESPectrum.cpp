@@ -797,7 +797,9 @@ void IRAM_ATTR ESPectrum::audioTask(void *unused) {
     // }
     // uint32_t fpart = 0;
 
+#ifndef ESP32_SDL2_WRAPPER
     for (;;) {
+#endif
 
         xQueueReceive(audioTaskQueue, &param, portMAX_DELAY);
 
@@ -875,8 +877,9 @@ void IRAM_ATTR ESPectrum::audioTask(void *unused) {
 
         }
 
+#ifndef ESP32_SDL2_WRAPPER
     }
-
+#endif
     // }
 
 }
@@ -949,6 +952,10 @@ for(;;) {
     processKeyboard();
     
     audioFrameEnd();
+
+#ifdef ESP32_SDL2_WRAPPER
+    audioTask(0);
+#endif
 
     elapsed = micros() - ts_start;
     idle = target - elapsed;

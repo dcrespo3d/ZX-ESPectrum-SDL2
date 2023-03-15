@@ -18,6 +18,7 @@
 #pragma comment(lib, "SDL2main.lib")
 
 #include "SDL.h"
+#include "AudioTask.h"
 
 extern void initKeyEventQueue();
 extern void pushToKeyEventQueue(uint32_t type, SDL_Scancode ekey);
@@ -112,6 +113,8 @@ int main(int argc, char* argv[])
 	if (window) std::cout << "Window has been created" << std::endl;
 	else { std::cout << "Window has NOT been created" << std::endl; SDL_Quit(); return -1; }
 
+	AudioTask::init();
+
 	unsigned vsyncFlag = SDL_RENDERER_PRESENTVSYNC;
 	SDL_Renderer* renderer = SDL_CreateRenderer
 	(
@@ -152,6 +155,7 @@ int main(int argc, char* argv[])
 
 	while (running)
 	{
+		AudioTask::update();
 
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
 		SDL_RenderClear(renderer);

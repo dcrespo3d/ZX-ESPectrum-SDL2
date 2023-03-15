@@ -85,6 +85,8 @@ add_executable(${PROJECT_NAME}
     ../sdl2/wrapper/sdmmc_cmd.h
     ../sdl2/wrapper/main.cpp
     ../sdl2/wrapper/wrap_FileUtils.cpp
+    ../sdl2/wrapper/AudioTask.h
+    ../sdl2/wrapper/AudioTask.cpp
 
     ../sdl2/wrapper/bitluni/Graphics/Font.h
     ../sdl2/wrapper/bitluni/Graphics/Graphics.h

@@ -120,15 +120,18 @@ inline esp_err_t pwm_audio_stop(void)
     return 0;
 }
 
-inline esp_err_t pwm_audio_write(uint8_t *inbuf, size_t len, size_t *bytes_written, TickType_t ticks_to_wait)
-{
-    return 0;
-}
+esp_err_t pwm_audio_write(uint8_t* inbuf, size_t len, size_t* bytes_written, TickType_t ticks_to_wait);
+esp_err_t pwm_audio_set_param(int rate, ledc_timer_bit_t bits, int ch);
 
-inline esp_err_t pwm_audio_set_param(int rate, ledc_timer_bit_t bits, int ch)
-{
-    return 0;
-}
+//inline esp_err_t pwm_audio_write(uint8_t *inbuf, size_t len, size_t *bytes_written, TickType_t ticks_to_wait)
+//{
+//    return 0;
+//}
+
+//inline esp_err_t pwm_audio_set_param(int rate, ledc_timer_bit_t bits, int ch)
+//{
+//    return 0;
+//}
 
 inline esp_err_t pwm_audio_set_sample_rate(int rate)
 {
