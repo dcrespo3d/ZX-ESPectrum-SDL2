@@ -11,7 +11,18 @@ static int prevSampleRate = -1;
 static int sampleRate = -1;
 static int bufferSize = 0;
 
-static std::deque<uint8_t*> queue;
+
+typedef std::deque<uint8_t*> AudioBufQueue;
+static AudioBufQueue queue;
+static AudioBufQueue discardableQueue;
+
+static void clearQueue(AudioBufQueue& q) {
+	while (!q.empty()) {
+		uint8_t* buf = q.front();
+		q.pop_front();
+		delete[] buf;
+	}
+}
 
 static void initDevice();
 static void closeDevice();
@@ -29,7 +40,10 @@ esp_err_t pwm_audio_write(uint8_t* inbuf, size_t len, size_t* bytes_written, Tic
 	if (0 == inbuf) return 0;
 
 	// avoid audio lag by discarding excess buffers (will break audio at some points)
-	if (queue.size() > 1) return 0;
+	if (queue.size() > 1) {
+		printf("discarding audio buffer...\n");
+		return 0;
+	}
 
 	uint8_t* bufcopy = new uint8_t[len];
 	if (0 == bufcopy) return 0;
@@ -55,7 +69,7 @@ static void audioCallback(void* userdata, Uint8* stream, int len)
 	uint8_t* buf = queue.front();
 	queue.pop_front();
 	memcpy(stream, buf, len);
-	delete[] buf;
+	discardableQueue.push_back(buf);
 
 	//printf("queue size: %d\n", queue.size());
 
@@ -87,11 +101,6 @@ static void closeDevice()
 	SDL_LockAudioDevice(dev);
 	SDL_CloseAudioDevice(dev);
 
-	while (!queue.empty()) {
-		uint8_t* buf = queue.front();
-		queue.pop_front();
-		delete[] buf;
-	}
 }
 
 
@@ -102,6 +111,8 @@ void AudioTask::init()
 
 void AudioTask::update()
 {
+	clearQueue(discardableQueue);
+
 	if (bufferSize == 0) return;
 
 	if (prevSampleRate != sampleRate) {
