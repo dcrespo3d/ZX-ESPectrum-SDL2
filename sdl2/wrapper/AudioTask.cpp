@@ -28,6 +28,7 @@ esp_err_t pwm_audio_write(uint8_t* inbuf, size_t len, size_t* bytes_written, Tic
 {
 	if (0 == inbuf) return 0;
 
+	// avoid audio lag by discarding excess buffers (will break audio at some points)
 	if (queue.size() > 1) return 0;
 
 	uint8_t* bufcopy = new uint8_t[len];
