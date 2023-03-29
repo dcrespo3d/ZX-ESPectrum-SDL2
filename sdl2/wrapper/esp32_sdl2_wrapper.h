@@ -83,6 +83,9 @@ typedef uint32_t TickType_t;
 
 inline void vTaskDelay(const uint32_t xTicksToDelay) {}
 
+inline void vTaskSuspend(TaskHandle_t) {}
+inline void vTaskResume(TaskHandle_t) {}
+
 inline int64_t esp_timer_get_time() {
     const Uint64 end = SDL_GetPerformanceCounter();
     const static Uint64 freq = SDL_GetPerformanceFrequency();
@@ -96,6 +99,15 @@ inline void esp32_wrapper_sleep_ms(uint32_t time_ms) {
 
 inline void esp32_wrapper_sleep_menukey() {
     esp32_wrapper_sleep_ms(50);
+}
+
+#define MALLOC_CAP_8BIT 0
+#define MALLOC_CAP_INTERNAL 0
+#define MALLOC_CAP_32BIT 0
+
+inline void* heap_caps_malloc(size_t size, uint32_t flags)
+{
+    return malloc(size);
 }
 
 inline UBaseType_t xPortGetCoreID() { return 0; }
