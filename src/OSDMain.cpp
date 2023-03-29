@@ -63,7 +63,7 @@ using namespace std;
 #define OSD_NORMAL false
 
 #define OSD_W 248
-#define OSD_H 176
+#define OSD_H 184
 #define OSD_MARGIN 4
 
 extern Font Font6x8;
@@ -120,7 +120,7 @@ void OSD::drawOSD() {
     VIDEO::vga.setFont(Font6x8);
     osdHome();
     VIDEO::vga.print(OSD_TITLE);
-    osdAt(20, 0);
+    osdAt(21, 0);
     VIDEO::vga.print(OSD_BOTTOM);
     osdHome();
 }
@@ -182,8 +182,10 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
     if (KeytoESP == fabgl::VK_PAUSE) {
         osdCenteredMsg(OSD_PAUSE[Config::lang], LEVEL_INFO, 0);
         while (1) {
-            ESPectrum::readKbd(&Nextkey);
-            if ((Nextkey.down) && (Nextkey.vk == fabgl::VK_PAUSE)) break;
+            if (ESPectrum::PS2Controller.keyboard()->virtualKeyAvailable()) {        
+                if (ESPectrum::readKbd(&Nextkey))
+                    if ((Nextkey.down) && (Nextkey.vk == fabgl::VK_PAUSE)) break;
+            }
             vTaskDelay(5 / portTICK_PERIOD_MS);
         }
     }
@@ -254,10 +256,10 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
         }
     }    
     // else if (KeytoESP == fabgl::VK_F9) {
-    //     ESPectrum::ESPoffset -= 10;
+    //     ESPectrum::ESPoffset -= 5;
     // }
     // else if (KeytoESP == fabgl::VK_F10) {
-    //     ESPectrum::ESPoffset += 10;
+    //     ESPectrum::ESPoffset += 5;
     // }
     else if (KeytoESP == fabgl::VK_F12) {
         
@@ -301,10 +303,6 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
                     if (mFile != "") {
                         changeSnapshot(mFile);
                     }
-                    // unsigned short snanum = menuRun(Config::sna_name_list);
-                    // if (snanum > 0) {
-                    //     changeSnapshot(rowGet(Config::sna_file_list, snanum));
-                    // }
                 }
                 else if (sna_mnu == 2) {
                     // Persist Load
@@ -386,21 +384,17 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
                     uint8_t opt2 = menuRun(stor_menu);
                     if (opt2) {
                         if (opt2 == 3) {
-                            deallocAluBytes();
                             OSD::osdCenteredMsg("Refreshing snap dir", LEVEL_INFO);
                             int chunks = FileUtils::DirToFile(FileUtils::MountPoint + DISK_SNA_DIR, ".sna.SNA.z80.Z80"); // Prepare sna filelist
                             if (chunks) FileUtils::Mergefiles(FileUtils::MountPoint + DISK_SNA_DIR,chunks); // Merge files
                             OSD::osdCenteredMsg("Refreshing tape dir", LEVEL_INFO);
                             chunks = FileUtils::DirToFile(FileUtils::MountPoint + DISK_TAP_DIR, ".tap.TAP"); // Prepare tap filelist
                             if (chunks) FileUtils::Mergefiles(FileUtils::MountPoint + DISK_TAP_DIR,chunks); // Merge files
-                            precalcAluBytes();
                         } else if (opt2 != curopt) {
                             if (opt2 == 1)
                                 FileUtils::MountPoint = MOUNT_POINT_SPIFFS;
                             else
                                 FileUtils::MountPoint = MOUNT_POINT_SD;
-                            // Config::loadSnapshotLists();
-                            // Config::loadTapLists();
                             Config::save();
                         }
                     }
@@ -419,9 +413,9 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
                             Config::requestMachine(arch, "SINCLAIR", true);
                             // Config::requestMachine(arch, romSet, true);
                             Config::ram_file = "none";
-                            vTaskDelay(2);
+                            vTaskDelay(2 / portTICK_PERIOD_MS);
                             Config::save();
-                            vTaskDelay(2);
+                            vTaskDelay(2 / portTICK_PERIOD_MS);
                             ESPectrum::reset();
                         //}
                     }
@@ -580,9 +574,12 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
             VIDEO::vga.setTextColor(OSD::zxColor(7, 0), OSD::zxColor(1, 0));
             VIDEO::vga.print(OSD_ABOUT[Config::lang]);
             while (1) {
-                ESPectrum::readKbd(&Nextkey);
-                if(!Nextkey.down) continue;
-                if ((Nextkey.vk == fabgl::VK_F1) || (Nextkey.vk == fabgl::VK_ESCAPE) || (Nextkey.vk == fabgl::VK_RETURN)) break;
+                if (ESPectrum::PS2Controller.keyboard()->virtualKeyAvailable()) {
+                    if (ESPectrum::readKbd(&Nextkey)) {
+                        if(!Nextkey.down) continue;
+                        if ((Nextkey.vk == fabgl::VK_F1) || (Nextkey.vk == fabgl::VK_ESCAPE) || (Nextkey.vk == fabgl::VK_RETURN)) break;
+                    }
+                }
                 vTaskDelay(5 / portTICK_PERIOD_MS);
             }
         }        

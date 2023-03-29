@@ -66,13 +66,13 @@ using namespace std;
 //=======================================================================================
 // KEYBOARD
 //=======================================================================================
-fabgl::PS2Controller PS2Controller;
+fabgl::PS2Controller ESPectrum::PS2Controller;
 
 //=======================================================================================
 // AUDIO
 //=======================================================================================
-uint8_t ESPectrum::audioBuffer[ESP_AUDIO_SAMPLES_128] = { 0 };
-uint8_t ESPectrum::overSamplebuf[ESP_AUDIO_OVERSAMPLES_128] = { 0 };
+uint8_t ESPectrum::audioBuffer[ESP_AUDIO_SAMPLES_48] = { 0 };
+uint8_t ESPectrum::overSamplebuf[ESP_AUDIO_OVERSAMPLES_48] = { 0 };
 signed char ESPectrum::aud_volume = -8;
 uint32_t ESPectrum::audbufcnt = 0;
 uint32_t ESPectrum::faudbufcnt = 0;
@@ -84,9 +84,9 @@ bool ESPectrum::AY_emu = false;
 int ESPectrum::Audio_freq = ESP_AUDIO_FREQ_48;
 // bool ESPectrum::Audio_restart = false;
 
-static QueueHandle_t audioTaskQueue;
-static TaskHandle_t audioTaskHandle;
-static uint8_t *param;
+QueueHandle_t audioTaskQueue;
+TaskHandle_t audioTaskHandle;
+uint8_t *param;
 
 //=======================================================================================
 // ARDUINO FUNCTIONS
@@ -98,10 +98,10 @@ static uint8_t *param;
 #define NOP() {for(int i=0;i<1000;i++){}}
 #endif
 
-
-unsigned long IRAM_ATTR micros()
+int64_t IRAM_ATTR micros()
 {
-    return (unsigned long) (esp_timer_get_time());
+    // return (int64_t) (esp_timer_get_time());
+    return esp_timer_get_time();    
 }
 
 unsigned long IRAM_ATTR millis()
@@ -109,16 +109,16 @@ unsigned long IRAM_ATTR millis()
     return (unsigned long) (esp_timer_get_time() / 1000ULL);
 }
 
-inline void IRAM_ATTR delay(uint32_t ms)
-{
-    vTaskDelay(ms / portTICK_PERIOD_MS);
-}
+// inline void IRAM_ATTR delay(uint32_t ms)
+// {
+//     vTaskDelay(ms / portTICK_PERIOD_MS);
+// }
 
-void IRAM_ATTR delayMicroseconds(uint32_t us)
+void IRAM_ATTR delayMicroseconds(int64_t us)
 {
-    uint32_t m = micros();
+    int64_t m = micros();
     if(us){
-        uint32_t e = (m + us);
+        int64_t e = (m + us);
         if(m > e){ //overflow
             while(micros() > e){
                 NOP();
@@ -134,7 +134,7 @@ void IRAM_ATTR delayMicroseconds(uint32_t us)
 // TIMING
 //=======================================================================================
 
-uint32_t ESPectrum::target;
+int64_t ESPectrum::target;
 
 //=======================================================================================
 // LOGGING / TESTING
@@ -169,8 +169,6 @@ void ESPectrum::setup()
     //=======================================================================================
     FileUtils::initFileSystem();
     Config::load();
-    Config::loadSnapshotLists();
-    Config::loadTapLists();
     
 #ifndef ESP32_SDL2_WRAPPER
     // Get chip information
@@ -193,10 +191,85 @@ void ESPectrum::setup()
         printf("IDF Version: %s\n",esp_get_idf_version());
         printf("\n");
 
+        if (Config::slog_on) printf("Executing on core: %u\n", xPortGetCoreID());
+
         showMemInfo();
 
     }
 #endif
+
+    //=======================================================================================
+    // VIDEO
+    //=======================================================================================
+
+    VIDEO::Init();
+
+    if (Config::slog_on) showMemInfo("VGA started");
+
+    //=======================================================================================
+    // MEMORY SETUP
+    //=======================================================================================
+
+    MemESP::ram5 = staticMemPage0;
+    MemESP::ram0 = staticMemPage1;
+    MemESP::ram2 = staticMemPage2;
+
+    // MemESP::ram1 = (unsigned char *) heap_caps_malloc(0x4000,MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    // MemESP::ram3 = (unsigned char *) heap_caps_malloc(0x4000,MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    // MemESP::ram4 = (unsigned char *) heap_caps_malloc(0x4000,MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    // MemESP::ram6 = (unsigned char *) heap_caps_malloc(0x4000,MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    // MemESP::ram7 = (unsigned char *) heap_caps_malloc(0x4000,MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
+    MemESP::ram1 = (unsigned char *) heap_caps_malloc(0x4000, MALLOC_CAP_8BIT);
+    MemESP::ram3 = (unsigned char *) heap_caps_malloc(0x4000, MALLOC_CAP_8BIT);
+    MemESP::ram4 = (unsigned char *) heap_caps_malloc(0x4000, MALLOC_CAP_8BIT);
+    MemESP::ram6 = (unsigned char *) heap_caps_malloc(0x4000, MALLOC_CAP_8BIT);
+    MemESP::ram7 = (unsigned char *) heap_caps_malloc(0x4000, MALLOC_CAP_8BIT);
+
+    if (Config::slog_on) {
+        if (MemESP::ram1 == NULL) printf("ERROR! Unable to allocate ram1\n");        
+        if (MemESP::ram3 == NULL) printf("ERROR! Unable to allocate ram3\n");        
+        if (MemESP::ram4 == NULL) printf("ERROR! Unable to allocate ram4\n");        
+        if (MemESP::ram6 == NULL) printf("ERROR! Unable to allocate ram6\n");
+        if (MemESP::ram7 == NULL) printf("ERROR! Unable to allocate ram7\n");
+    }
+
+    MemESP::ram[0] = MemESP::ram0; MemESP::ram[1] = MemESP::ram1;
+    MemESP::ram[2] = MemESP::ram2; MemESP::ram[3] = MemESP::ram3;
+    MemESP::ram[4] = MemESP::ram4; MemESP::ram[5] = MemESP::ram5;
+    MemESP::ram[6] = MemESP::ram6; MemESP::ram[7] = MemESP::ram7;
+
+    if (Config::slog_on) showMemInfo("RAM Initialized");
+
+    //=======================================================================================
+    // AUDIO
+    //=======================================================================================
+
+    // Set samples per frame and AY_emu flag depending on arch
+    if (Config::getArch() == "48K") {
+        overSamplesPerFrame=ESP_AUDIO_OVERSAMPLES_48;
+        samplesPerFrame=ESP_AUDIO_SAMPLES_48; 
+        AY_emu = Config::AY48;
+        Audio_freq = ESP_AUDIO_FREQ_48;
+    } else {
+        overSamplesPerFrame=ESP_AUDIO_OVERSAMPLES_128;
+        samplesPerFrame=ESP_AUDIO_SAMPLES_128;
+        AY_emu = true;        
+        Audio_freq = ESP_AUDIO_FREQ_128;
+    }
+
+    // Create Audio task
+    audioTaskQueue = xQueueCreate(1, sizeof(uint8_t *));
+    // Latest parameter = Core. In ESPIF, main task runs on core 0 by default. In Arduino, loop() runs on core 1.
+    xTaskCreatePinnedToCore(&ESPectrum::audioTask, "audioTask", 1024, NULL, 5, &audioTaskHandle, 1);
+
+    // AY Sound
+    AySound::init();
+    AySound::set_sound_format(Audio_freq,1,8);
+    AySound::set_stereo(AYEMU_MONO,NULL);
+    
+    AySound::reset();
+
     //=======================================================================================
     // KEYBOARD
     //=======================================================================================
@@ -223,75 +296,8 @@ void ESPectrum::setup()
 
     // printf("Kbd layout: %s\n",Config::kbd_layout.c_str());
 
-    //=======================================================================================
-    // VIDEO
-    //=======================================================================================
-
-    VIDEO::Init();
-
-    if (Config::slog_on) showMemInfo("VGA started");
-
-    //=======================================================================================
-    // MEMORY SETUP
-    //=======================================================================================
-
-    MemESP::ram5 = staticMemPage0;
-    MemESP::ram0 = staticMemPage1;
-    MemESP::ram2 = staticMemPage2;
-
-    MemESP::ram1 = (unsigned char *)calloc(1,0x4000);
-    MemESP::ram3 = (unsigned char *)calloc(1,0x4000);
-    MemESP::ram4 = (unsigned char *)calloc(1,0x4000);
-    MemESP::ram6 = (unsigned char *)calloc(1,0x4000);
-    MemESP::ram7 = (unsigned char *)calloc(1,0x4000);
-    
-    if (Config::slog_on) {
-        if (MemESP::ram1 == NULL) printf("ERROR! Unable to allocate ram1\n");        
-        if (MemESP::ram3 == NULL) printf("ERROR! Unable to allocate ram3\n");        
-        if (MemESP::ram4 == NULL) printf("ERROR! Unable to allocate ram4\n");        
-        if (MemESP::ram6 == NULL) printf("ERROR! Unable to allocate ram6\n");
-        if (MemESP::ram7 == NULL) printf("ERROR! Unable to allocate ram7\n");
-    }
-
-    MemESP::ram[0] = MemESP::ram0; MemESP::ram[1] = MemESP::ram1;
-    MemESP::ram[2] = MemESP::ram2; MemESP::ram[3] = MemESP::ram3;
-    MemESP::ram[4] = MemESP::ram4; MemESP::ram[5] = MemESP::ram5;
-    MemESP::ram[6] = MemESP::ram6; MemESP::ram[7] = MemESP::ram7;
-
-    if (Config::slog_on) showMemInfo("RAM Initialized");
-
-    // Active graphic bank pointer
-    VIDEO::grmem = MemESP::videoLatch ? MemESP::ram7 : MemESP::ram5;
-
     // Init tape
     Tape::Init();
-
-    if (Config::slog_on) printf("Executing on core: %u\n", xPortGetCoreID());
-
-    // Set samples per frame and AY_emu flag depending on arch
-    if (Config::getArch() == "48K") {
-        overSamplesPerFrame=ESP_AUDIO_OVERSAMPLES_48;
-        samplesPerFrame=ESP_AUDIO_SAMPLES_48; 
-        AY_emu = Config::AY48;
-        Audio_freq = ESP_AUDIO_FREQ_48;
-    } else {
-        overSamplesPerFrame=ESP_AUDIO_OVERSAMPLES_128;
-        samplesPerFrame=ESP_AUDIO_SAMPLES_128;
-        AY_emu = true;        
-        Audio_freq = ESP_AUDIO_FREQ_128;
-    }
-
-    // Create Audio task
-    audioTaskQueue = xQueueCreate(1, sizeof(uint8_t *));
-    // Latest parameter = Core. In ESPIF, main task runs on core 0 by default. In Arduino, loop() runs on core 1.
-    xTaskCreatePinnedToCore(&ESPectrum::audioTask, "audioTask", 4096, NULL, 5, &audioTaskHandle, 1);
-
-    // AY Sound
-    AySound::initialize();
-    // // Set AY channels samplerate to match pwm_audio's
-    AySound::_channel[0].setSampleRate(Audio_freq);
-    AySound::_channel[1].setSampleRate(Audio_freq);
-    AySound::_channel[2].setSampleRate(Audio_freq);
 
     // START Z80
     CPU::setup();
@@ -309,6 +315,9 @@ void ESPectrum::setup()
     MemESP::modeSP3 = 0;
     MemESP::romSP3 = 0;
     MemESP::romInUse = 0;
+
+    // Active graphic bank pointer
+    VIDEO::grmem = MemESP::videoLatch ? MemESP::ram7 : MemESP::ram5;
 
     Tape::tapeFileName = "none";
     Tape::tapeStatus = TAPE_STOPPED;
@@ -373,8 +382,10 @@ void ESPectrum::reset()
     pwm_audio_stop();
 
     // Empty audio buffers
-    for (int i=0;i<ESP_AUDIO_OVERSAMPLES_128;i++) overSamplebuf[i]=0;
-    for (int i=0;i<ESP_AUDIO_SAMPLES_128;i++) audioBuffer[i]=0;
+    for (int i=0;i<ESP_AUDIO_OVERSAMPLES_48;i++) overSamplebuf[i]=0;
+    for (int i=0;i<ESP_AUDIO_SAMPLES_48;i++) {
+        audioBuffer[i]=0;
+    }
     lastaudioBit=0;
 
     // Set samples per frame and AY_emu flag depending on arch
@@ -393,12 +404,10 @@ void ESPectrum::reset()
     pwm_audio_set_param(Audio_freq,LEDC_TIMER_8_BIT,1);
 
     // Reset AY emulation
+    AySound::init();
+    AySound::set_sound_format(Audio_freq,1,8);
+    AySound::set_stereo(AYEMU_MONO,NULL);
     AySound::reset();
-
-    // Set AY channels samplerate to match pwm_audio's
-    AySound::_channel[0].setSampleRate(Audio_freq);
-    AySound::_channel[1].setSampleRate(Audio_freq);
-    AySound::_channel[2].setSampleRate(Audio_freq);
 
     pwm_audio_start();
     
@@ -442,9 +451,7 @@ void ESPectrum::loadRom(string arch, string romset) {
 //=======================================================================================
 bool IRAM_ATTR ESPectrum::readKbd(fabgl::VirtualKeyItem *Nextkey) {
     
-    auto keyboard = PS2Controller.keyboard();
-    bool r = keyboard->getNextVirtualKey(Nextkey);
-
+    bool r = PS2Controller.keyboard()->getNextVirtualKey(Nextkey);
     // Global keys
     if (Nextkey->down) {
         if (Nextkey->vk == fabgl::VK_PRINTSCREEN) { // Capture framebuffer to BMP file in SD Card (thx @dcrespo3d!)
@@ -453,17 +460,42 @@ bool IRAM_ATTR ESPectrum::readKbd(fabgl::VirtualKeyItem *Nextkey) {
         }
         #ifdef DEV_STUFF 
         else if (Nextkey->vk == fabgl::VK_DEGREE) { // Show mem info
-            // multi_heap_info_t info;
-            // heap_caps_get_info(&info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); // internal RAM, memory capable to store data or to create new task
+            multi_heap_info_t info;
+            heap_caps_get_info(&info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); // internal RAM, memory capable to store data or to create new task
             printf("=========================================================================\n");
-            // printf("Total currently free in all non-continues blocks: %d\n", info.total_free_bytes);
-            // printf("Minimum free ever: %d\n", info.minimum_free_bytes);
-            // printf("Largest continues block to allocate big array: %d\n", info.largest_free_block);
-            // printf("Heap caps get free size: %d\n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-            // printf("=========================================================================\n\n");
+            printf("Total currently free in all non-continues blocks: %d\n", info.total_free_bytes);
+            printf("Minimum free ever: %d\n", info.minimum_free_bytes);
+            printf("Largest continues block to allocate big array: %d\n", info.largest_free_block);
+            printf("Heap caps get free size: %d\n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+
+            printf("=========================================================================\n\n");
+            heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
+
+            printf("=========================================================================\n");
+            heap_caps_print_heap_info(MALLOC_CAP_8BIT);            
             
-            heap_caps_print_heap_info(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-            // heap_caps_dump(MALLOC_CAP_INTERNAL);
+            printf("=========================================================================\n");
+            heap_caps_print_heap_info(MALLOC_CAP_32BIT);                        
+
+            printf("=========================================================================\n");
+            heap_caps_print_heap_info(MALLOC_CAP_DEFAULT);
+
+            printf("=========================================================================\n");
+            heap_caps_print_heap_info(MALLOC_CAP_DMA);            
+
+            printf("=========================================================================\n");
+            heap_caps_print_heap_info(MALLOC_CAP_EXEC);            
+
+            printf("=========================================================================\n");
+            heap_caps_print_heap_info(MALLOC_CAP_IRAM_8BIT);            
+            
+            printf("=========================================================================\n");
+            heap_caps_dump_all();
+
+            printf("=========================================================================\n");
+            UBaseType_t wm;
+            wm = uxTaskGetStackHighWaterMark(audioTaskHandle);
+            printf("Stack HWM: %u\n", wm);
             
             r = false;
         }    
@@ -479,9 +511,7 @@ void IRAM_ATTR ESPectrum::processKeyboard() {
     fabgl::VirtualKey KeytoESP;
     bool Kdown;
 
-    auto keyboard = PS2Controller.keyboard();
-
-    while (keyboard->virtualKeyAvailable()) {
+    while (PS2Controller.keyboard()->virtualKeyAvailable()) {
 
         bool r = readKbd(&NextKey);
 
@@ -490,7 +520,10 @@ void IRAM_ATTR ESPectrum::processKeyboard() {
             Kdown = NextKey.down;
 
             if ((Kdown) && (((KeytoESP >= fabgl::VK_F1) && (KeytoESP <= fabgl::VK_F12)) || (KeytoESP == fabgl::VK_PAUSE))) {
+                // vTaskDelay(50 / portTICK_PERIOD_MS); // Generous delay to let audio task to flush or finish processing buffer if needed
+                vTaskSuspend(audioTaskHandle);
                 OSD::do_OSD(KeytoESP);
+                vTaskResume(audioTaskHandle);
                 continue;
             }
 
@@ -499,12 +532,12 @@ void IRAM_ATTR ESPectrum::processKeyboard() {
                 continue;
             }
 
-            if (KeytoESP == fabgl::VK_LSHIFT || KeytoESP == fabgl::VK_RSHIFT) {
+            if (KeytoESP == fabgl::VK_LCTRL) {
                 bitWrite(Ports::port[0], 0, !Kdown); // CAPS SHIFT                
                 continue;
             }
 
-            if (KeytoESP == fabgl::VK_LCTRL || KeytoESP == fabgl::VK_RCTRL) {
+            if (KeytoESP == fabgl::VK_RCTRL) {
                 bitWrite(Ports::port[7], 1, !Kdown); // SYMBOL SHIFT
                 continue;
             }
@@ -670,11 +703,11 @@ void IRAM_ATTR ESPectrum::processKeyboard() {
                 // Kempston
                 Ports::port[0x1f] = 0;
 
-                bitWrite(Ports::port[0x1f], 0, keyboard->isVKDown(fabgl::VK_RIGHT) || keyboard->isVKDown(fabgl::VK_KP_RIGHT));
-                bitWrite(Ports::port[0x1f], 1, keyboard->isVKDown(fabgl::VK_LEFT) || keyboard->isVKDown(fabgl::VK_KP_LEFT));
-                bitWrite(Ports::port[0x1f], 2, keyboard->isVKDown(fabgl::VK_DOWN) || keyboard->isVKDown(fabgl::VK_KP_DOWN) || keyboard->isVKDown(fabgl::VK_KP_CENTER));
-                bitWrite(Ports::port[0x1f], 3, keyboard->isVKDown(fabgl::VK_UP) || keyboard->isVKDown(fabgl::VK_KP_UP));
-                bitWrite(Ports::port[0x1f], 4, keyboard->isVKDown(fabgl::VK_RALT));
+                bitWrite(Ports::port[0x1f], 0, PS2Controller.keyboard()->isVKDown(fabgl::VK_RIGHT) || PS2Controller.keyboard()->isVKDown(fabgl::VK_KP_RIGHT));
+                bitWrite(Ports::port[0x1f], 1, PS2Controller.keyboard()->isVKDown(fabgl::VK_LEFT) || PS2Controller.keyboard()->isVKDown(fabgl::VK_KP_LEFT));
+                bitWrite(Ports::port[0x1f], 2, PS2Controller.keyboard()->isVKDown(fabgl::VK_DOWN) || PS2Controller.keyboard()->isVKDown(fabgl::VK_KP_DOWN) || PS2Controller.keyboard()->isVKDown(fabgl::VK_KP_CENTER));
+                bitWrite(Ports::port[0x1f], 3, PS2Controller.keyboard()->isVKDown(fabgl::VK_UP) || PS2Controller.keyboard()->isVKDown(fabgl::VK_KP_UP));
+                bitWrite(Ports::port[0x1f], 4, PS2Controller.keyboard()->isVKDown(fabgl::VK_RALT));
         
             } else {
 
@@ -708,53 +741,53 @@ void IRAM_ATTR ESPectrum::processKeyboard() {
 
             // TO DO: CONVERT ALL THIS STUFF TO A TABLE WITH KEY -> PORT,BITS RELATIONSHIPS
             
-            //bitWrite(Ports::port[0], 0, !keyboard->isVKDown(fabgl::VK_LCTRL)); // CAPS SHIFT
-            bitWrite(Ports::port[0], 1, (!keyboard->isVKDown(fabgl::VK_Z)) & (!keyboard->isVKDown(fabgl::VK_z)));
-            bitWrite(Ports::port[0], 2, (!keyboard->isVKDown(fabgl::VK_X)) & (!keyboard->isVKDown(fabgl::VK_x)));
-            bitWrite(Ports::port[0], 3, (!keyboard->isVKDown(fabgl::VK_C)) & (!keyboard->isVKDown(fabgl::VK_c)));
-            bitWrite(Ports::port[0], 4, (!keyboard->isVKDown(fabgl::VK_V)) & (!keyboard->isVKDown(fabgl::VK_v)));
+            //bitWrite(Ports::port[0], 0, !PS2Controller.keyboard()->isVKDown(fabgl::VK_LCTRL)); // CAPS SHIFT
+            bitWrite(Ports::port[0], 1, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_Z)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_z)));
+            bitWrite(Ports::port[0], 2, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_X)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_x)));
+            bitWrite(Ports::port[0], 3, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_C)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_c)));
+            bitWrite(Ports::port[0], 4, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_V)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_v)));
 
-            bitWrite(Ports::port[1], 0, (!keyboard->isVKDown(fabgl::VK_A)) & (!keyboard->isVKDown(fabgl::VK_a)));    
-            bitWrite(Ports::port[1], 1, (!keyboard->isVKDown(fabgl::VK_S)) & (!keyboard->isVKDown(fabgl::VK_s)));
-            bitWrite(Ports::port[1], 2, (!keyboard->isVKDown(fabgl::VK_D)) & (!keyboard->isVKDown(fabgl::VK_d)));
-            bitWrite(Ports::port[1], 3, (!keyboard->isVKDown(fabgl::VK_F)) & (!keyboard->isVKDown(fabgl::VK_f)));
-            bitWrite(Ports::port[1], 4, (!keyboard->isVKDown(fabgl::VK_G)) & (!keyboard->isVKDown(fabgl::VK_g)));
+            bitWrite(Ports::port[1], 0, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_A)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_a)));    
+            bitWrite(Ports::port[1], 1, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_S)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_s)));
+            bitWrite(Ports::port[1], 2, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_D)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_d)));
+            bitWrite(Ports::port[1], 3, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_F)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_f)));
+            bitWrite(Ports::port[1], 4, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_G)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_g)));
 
-            bitWrite(Ports::port[2], 0, (!keyboard->isVKDown(fabgl::VK_Q)) & (!keyboard->isVKDown(fabgl::VK_q)));    
-            bitWrite(Ports::port[2], 1, (!keyboard->isVKDown(fabgl::VK_W)) & (!keyboard->isVKDown(fabgl::VK_w)));
-            bitWrite(Ports::port[2], 2, (!keyboard->isVKDown(fabgl::VK_E)) & (!keyboard->isVKDown(fabgl::VK_e)));
-            bitWrite(Ports::port[2], 3, (!keyboard->isVKDown(fabgl::VK_R)) & (!keyboard->isVKDown(fabgl::VK_r)));
-            bitWrite(Ports::port[2], 4, (!keyboard->isVKDown(fabgl::VK_T)) & (!keyboard->isVKDown(fabgl::VK_t)));
+            bitWrite(Ports::port[2], 0, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_Q)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_q)));    
+            bitWrite(Ports::port[2], 1, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_W)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_w)));
+            bitWrite(Ports::port[2], 2, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_E)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_e)));
+            bitWrite(Ports::port[2], 3, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_R)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_r)));
+            bitWrite(Ports::port[2], 4, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_T)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_t)));
 
-            bitWrite(Ports::port[3], 0, !keyboard->isVKDown(fabgl::VK_1));
-            bitWrite(Ports::port[3], 1, !keyboard->isVKDown(fabgl::VK_2));
-            bitWrite(Ports::port[3], 2, !keyboard->isVKDown(fabgl::VK_3));
-            bitWrite(Ports::port[3], 3, !keyboard->isVKDown(fabgl::VK_4));
-            bitWrite(Ports::port[3], 4, !keyboard->isVKDown(fabgl::VK_5));
+            bitWrite(Ports::port[3], 0, !PS2Controller.keyboard()->isVKDown(fabgl::VK_1));
+            bitWrite(Ports::port[3], 1, !PS2Controller.keyboard()->isVKDown(fabgl::VK_2));
+            bitWrite(Ports::port[3], 2, !PS2Controller.keyboard()->isVKDown(fabgl::VK_3));
+            bitWrite(Ports::port[3], 3, !PS2Controller.keyboard()->isVKDown(fabgl::VK_4));
+            bitWrite(Ports::port[3], 4, !PS2Controller.keyboard()->isVKDown(fabgl::VK_5));
 
-            bitWrite(Ports::port[4], 0, !keyboard->isVKDown(fabgl::VK_0));
-            bitWrite(Ports::port[4], 1, !keyboard->isVKDown(fabgl::VK_9));
-            bitWrite(Ports::port[4], 2, !keyboard->isVKDown(fabgl::VK_8));
-            bitWrite(Ports::port[4], 3, !keyboard->isVKDown(fabgl::VK_7));
-            bitWrite(Ports::port[4], 4, !keyboard->isVKDown(fabgl::VK_6));
+            bitWrite(Ports::port[4], 0, !PS2Controller.keyboard()->isVKDown(fabgl::VK_0));
+            bitWrite(Ports::port[4], 1, !PS2Controller.keyboard()->isVKDown(fabgl::VK_9));
+            bitWrite(Ports::port[4], 2, !PS2Controller.keyboard()->isVKDown(fabgl::VK_8));
+            bitWrite(Ports::port[4], 3, !PS2Controller.keyboard()->isVKDown(fabgl::VK_7));
+            bitWrite(Ports::port[4], 4, !PS2Controller.keyboard()->isVKDown(fabgl::VK_6));
 
-            bitWrite(Ports::port[5], 0, (!keyboard->isVKDown(fabgl::VK_P)) & (!keyboard->isVKDown(fabgl::VK_p)));
-            bitWrite(Ports::port[5], 1, (!keyboard->isVKDown(fabgl::VK_O)) & (!keyboard->isVKDown(fabgl::VK_o)));
-            bitWrite(Ports::port[5], 2, (!keyboard->isVKDown(fabgl::VK_I)) & (!keyboard->isVKDown(fabgl::VK_i)));
-            bitWrite(Ports::port[5], 3, (!keyboard->isVKDown(fabgl::VK_U)) & (!keyboard->isVKDown(fabgl::VK_u)));
-            bitWrite(Ports::port[5], 4, (!keyboard->isVKDown(fabgl::VK_Y)) & (!keyboard->isVKDown(fabgl::VK_y)));
+            bitWrite(Ports::port[5], 0, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_P)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_p)));
+            bitWrite(Ports::port[5], 1, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_O)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_o)));
+            bitWrite(Ports::port[5], 2, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_I)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_i)));
+            bitWrite(Ports::port[5], 3, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_U)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_u)));
+            bitWrite(Ports::port[5], 4, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_Y)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_y)));
 
-            // bitWrite(Ports::port[6], 0, !keyboard->isVKDown(fabgl::VK_RETURN));
-            bitWrite(Ports::port[6], 1, (!keyboard->isVKDown(fabgl::VK_L)) & (!keyboard->isVKDown(fabgl::VK_l)));
-            bitWrite(Ports::port[6], 2, (!keyboard->isVKDown(fabgl::VK_K)) & (!keyboard->isVKDown(fabgl::VK_k)));
-            bitWrite(Ports::port[6], 3, (!keyboard->isVKDown(fabgl::VK_J)) & (!keyboard->isVKDown(fabgl::VK_j)));
-            bitWrite(Ports::port[6], 4, (!keyboard->isVKDown(fabgl::VK_H)) & (!keyboard->isVKDown(fabgl::VK_h)));
+            // bitWrite(Ports::port[6], 0, !PS2Controller.keyboard()->isVKDown(fabgl::VK_RETURN));
+            bitWrite(Ports::port[6], 1, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_L)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_l)));
+            bitWrite(Ports::port[6], 2, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_K)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_k)));
+            bitWrite(Ports::port[6], 3, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_J)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_j)));
+            bitWrite(Ports::port[6], 4, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_H)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_h)));
 
-            // bitWrite(Ports::port[7], 0, !keyboard->isVKDown(fabgl::VK_SPACE));
-            // bitWrite(Ports::port[7], 1, !keyboard->isVKDown(fabgl::VK_RCTRL)); // SYMBOL SHIFT
-            bitWrite(Ports::port[7], 2, (!keyboard->isVKDown(fabgl::VK_M)) & (!keyboard->isVKDown(fabgl::VK_m)));
-            bitWrite(Ports::port[7], 3, (!keyboard->isVKDown(fabgl::VK_N)) & (!keyboard->isVKDown(fabgl::VK_n)));
-            bitWrite(Ports::port[7], 4, (!keyboard->isVKDown(fabgl::VK_B)) & (!keyboard->isVKDown(fabgl::VK_b)));
+            // bitWrite(Ports::port[7], 0, !PS2Controller.keyboard()->isVKDown(fabgl::VK_SPACE));
+            // bitWrite(Ports::port[7], 1, !PS2Controller.keyboard()->isVKDown(fabgl::VK_RCTRL)); // SYMBOL SHIFT
+            bitWrite(Ports::port[7], 2, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_M)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_m)));
+            bitWrite(Ports::port[7], 3, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_N)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_n)));
+            bitWrite(Ports::port[7], 4, (!PS2Controller.keyboard()->isVKDown(fabgl::VK_B)) & (!PS2Controller.keyboard()->isVKDown(fabgl::VK_b)));
 
         }
 
@@ -788,15 +821,6 @@ void IRAM_ATTR ESPectrum::audioTask(void *unused) {
     pwm_audio_start();
     pwm_audio_set_volume(aud_volume);
 
-    // xQueueReceive(audioTaskQueue, &param, portMAX_DELAY);
-
-    // FILE *f = fopen("/sd/c/audioout.raw", "wb");
-    // if (f==NULL)
-    // {
-    //     printf("Error opening file for write.\n");
-    // }
-    // uint32_t fpart = 0;
-
 #ifndef ESP32_SDL2_WRAPPER
     for (;;) {
 #endif
@@ -810,59 +834,33 @@ void IRAM_ATTR ESPectrum::audioTask(void *unused) {
         //     pwm_audio_deinit();
         //     break;
         // }
-
+        
         pwm_audio_write(audioBuffer, samplesPerFrame, &written, portMAX_DELAY);
-
-        // if (fpart!=1001) fpart++;
-        // if (fpart<1000) {
-        //     uint8_t* buffer = audioBuffer;
-        //     fwrite(&buffer[0],samplesPerFrame,1,f);
-        // } else {
-        //     if (fpart==1000) {
-        //         fclose(f);
-        //         printf("Audio dumped!\n");
-        //     }            
-        // }
-
-        // pwm_audio_write(audioBuffer, samplesPerFrame, &written, portTICK_PERIOD_MS << 3);
 
         xQueueReceive(audioTaskQueue, &param, portMAX_DELAY);
 
+        int i = 0;
+        
         // Finish fill of oversampled audio buffer
         if (faudbufcnt < overSamplesPerFrame) {
-            int signal = faudioBit ? 255: 0;
-            for (int i=faudbufcnt; i < overSamplesPerFrame;i++) overSamplebuf[i] = signal;
+            int signal = faudioBit ? 127: 0;
+            for (i=faudbufcnt; i < overSamplesPerFrame;i++) overSamplebuf[i] = signal;
         }
-
-        // Downsample beeper (median) and mix AY channels to output buffer
-        int beeper, aymix;
         
-        if (AY_emu) {
+        // Downsample beeper (median) and mix AY channels to output buffer
+        int beeper;
+        
+        if (Z80Ops::is48) {
 
-            for (int i=0;i<overSamplesPerFrame; i += 7) {    
-                // Downsample (median)
-                beeper  =  overSamplebuf[i];
-                beeper +=  overSamplebuf[i+1];
-                beeper +=  overSamplebuf[i+2];
-                beeper +=  overSamplebuf[i+3];
-                beeper +=  overSamplebuf[i+4];
-                beeper +=  overSamplebuf[i+5];
-                beeper +=  overSamplebuf[i+6];
+            if (AY_emu) {
+                
+                // AySound::update(); // TO DO: This should be done reading a buffer of AY orders built during frame
 
-                // Mix AY Channels
-                aymix = AySound::_channel[0].getSample();
-                aymix += AySound::_channel[1].getSample();
-                aymix += AySound::_channel[2].getSample();
-
-                beeper = (beeper / 7) + (aymix / 3);
-                audioBuffer[ i / 7] = beeper > 255 ? 255 : beeper; // Clamp
+                AySound::gen_sound(audioBuffer, ESP_AUDIO_SAMPLES_48, 0);
 
             }
 
-            AySound::update();
-
-        } else {
-
+            int n = 0;
             for (int i=0;i<overSamplesPerFrame; i += 7) {    
                 // Downsample (median)
                 beeper  =  overSamplebuf[i];
@@ -872,7 +870,38 @@ void IRAM_ATTR ESPectrum::audioTask(void *unused) {
                 beeper +=  overSamplebuf[i+4];
                 beeper +=  overSamplebuf[i+5];
                 beeper +=  overSamplebuf[i+6];
-                audioBuffer[ i / 7] = beeper / 7;
+
+                beeper = AY_emu ? (beeper / 7) + audioBuffer[n] : beeper / 7;
+
+                audioBuffer[n] = beeper > 255 ? 255 : beeper; // Clamp
+
+                n++;
+
+            }
+
+        } else {
+
+            // AySound::update(); // TO DO: This should be done reading a buffer of AY orders built during frame
+
+            AySound::gen_sound(audioBuffer, ESP_AUDIO_SAMPLES_128, 0);
+            
+            int n = 0;
+            for (int i=0;i<overSamplesPerFrame; i += 6) {
+
+                // Downsample (median)
+                beeper  =  overSamplebuf[i];
+                beeper +=  overSamplebuf[i+1];
+                beeper +=  overSamplebuf[i+2];
+                beeper +=  overSamplebuf[i+3];
+                beeper +=  overSamplebuf[i+4];
+                beeper +=  overSamplebuf[i+5];
+
+                beeper = (beeper / 6) + audioBuffer[n];
+
+                audioBuffer[n] = beeper > 255 ? 255 : beeper; // Clamp
+
+                n++;
+
             }
 
         }
@@ -885,7 +914,7 @@ void IRAM_ATTR ESPectrum::audioTask(void *unused) {
 }
 
 void ESPectrum::audioFrameStart() {
-
+    
     xQueueSend(audioTaskQueue, &param, portMAX_DELAY);
 
     audbufcnt = 0;
@@ -896,8 +925,8 @@ void IRAM_ATTR ESPectrum::audioGetSample(int Audiobit) {
 
     if (Audiobit != lastaudioBit) {
         // Audio buffer generation (oversample)
-        uint32_t audbufpos = CPU::tstates >> 4;
-        int signal = lastaudioBit ? 255: 0;
+        uint32_t audbufpos = Z80Ops::is48 ? CPU::tstates >> 4 : CPU::tstates / 19;
+        int signal = lastaudioBit ? 127: 0;
         for (int i=audbufcnt;i<audbufpos;i++) {
             overSamplebuf[i] = signal;
         }
@@ -926,14 +955,22 @@ static char linea1[] = "CPU: 00000 / IDL: 00000 ";
 static char linea2[] = "FPS:000.00 / FND:000.00 ";    
 static double totalseconds = 0;
 static double totalsecondsnodelay = 0;
-uint32_t ts_start, elapsed;
-int32_t idle;
+int64_t ts_start, elapsed;
+int64_t idle;
 
-// // Testing/Profiling: Start with stats on
+// For Testing/Profiling: Start with stats on
 // VIDEO::LineDraw = LINEDRAW_FPS;
 // VIDEO::BottomDraw = BOTTOMBORDER_FPS;
 
-// xQueueSend(audioTaskQueue, &param, portMAX_DELAY);
+// FILE *f = fopen("/sd/c/audioout.raw", "wb");
+// if (f==NULL)
+// {
+//     printf("Error opening file for write.\n");
+// }
+// uint32_t fpart = 0;
+
+// Simulate keypress, for testing
+// bitWrite(Ports::port[5], 4, 0);
 
 for(;;) {
 
@@ -943,6 +980,23 @@ for(;;) {
 
     CPU::loop();
 
+    audioFrameEnd();
+
+#ifdef ESP32_SDL2_WRAPPER
+    audioTask(0);
+#endif
+
+    // if (fpart!=1001) fpart++;
+    // if (fpart<1000) {
+    //     uint8_t* buffer = audioBuffer;
+    //     fwrite(&buffer[0],samplesPerFrame,1,f);
+    // } else {
+    //     if (fpart==1000) {
+    //         fclose(f);
+    //         printf("Audio dumped!\n");
+    //     }            
+    // }
+
     // Draw stats, if activated, every 32 frames
     if (((CPU::framecnt & 31) == 0) && (VIDEO::OSD)) OSD::drawStats(linea1,linea2); 
 
@@ -951,18 +1005,12 @@ for(;;) {
 
     processKeyboard();
     
-    audioFrameEnd();
-
-#ifdef ESP32_SDL2_WRAPPER
-    audioTask(0);
-#endif
-
     elapsed = micros() - ts_start;
     idle = target - elapsed;
     if (idle < 0) idle = 0;
 
     #ifdef VIDEO_FRAME_TIMING
-    totalseconds += idle ;
+    totalseconds += idle;
     #endif
     
     totalseconds += elapsed;
@@ -975,11 +1023,12 @@ for(;;) {
             printf("===========================================================================\n");
             printf("[CPU] elapsed: %u; idle: %d\n", elapsed, idle);
             printf("[Audio] Volume: %d\n", aud_volume);
-            printf("[Framecnt] %u; [Seconds] %.2f; [FPS] %.2f; [FPS (no delay)] %.2f\n", CPU::framecnt, totalseconds / 1000000, CPU::framecnt / (totalseconds / 1000000), CPU::framecnt / (totalsecondsnodelay / 1000000));
+            printf("[Framecnt] %u; [Seconds] %f; [FPS] %f; [FPS (no delay)] %f\n", CPU::framecnt, totalseconds / 1000000, CPU::framecnt / (totalseconds / 1000000), CPU::framecnt / (totalsecondsnodelay / 1000000));
             // printf("[ESPoffset] %d\n", ESPoffset);
+            showMemInfo();
             #endif
 
-            sprintf((char *)linea1,"CPU: %.5u / IDL: %.5d ", elapsed, idle);
+            sprintf((char *)linea1,"CPU: %05d / IDL: %05d ", (int)(elapsed), (int)(idle));
             sprintf((char *)linea2,"FPS:%6.2f / FND:%6.2f ", CPU::framecnt / (totalseconds / 1000000), CPU::framecnt / (totalsecondsnodelay / 1000000));    
 
         }
@@ -993,11 +1042,10 @@ for(;;) {
     #ifdef VIDEO_FRAME_TIMING    
     elapsed = micros() - ts_start;
     idle = target - elapsed;
-    // idle += ESPoffset;
+    if (!Z80Ops::is48) idle -= 90;
     if (idle > 0) delayMicroseconds(idle);
     #endif
 
 }
 
 }
-

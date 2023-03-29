@@ -46,7 +46,6 @@
 VGA6Bit VIDEO::vga;
 uint8_t VIDEO::borderColor = 0;
 uint32_t VIDEO::brd;
-unsigned int VIDEO::lastBorder[312] = { 0 };
 uint32_t VIDEO::border32[8];
 uint8_t VIDEO::flashing = 0;
 uint8_t VIDEO::flash_ctr= 0;
@@ -66,13 +65,29 @@ void (*VIDEO::Draw)(unsigned int, bool) = &VIDEO::Blank;
 void (*VIDEO::DrawOSD43)(unsigned int, bool) = &VIDEO::BottomBorder;
 void (*VIDEO::DrawOSD169)(unsigned int, bool) = &VIDEO::MainScreen;
 
+// static uint16_t specfast_colors[128]; // Array for faster color calc in Draw
+
 void precalcColors() {
+    
     for (int i = 0; i < NUM_SPECTRUM_COLORS; i++) {
         spectrum_colors[i] = (spectrum_colors[i] & VIDEO::vga.RGBAXMask) | VIDEO::vga.SBits;
     }
+
+//    // Calc array for faster color calcs in ALU_video
+//     for (int i = 0; i < (NUM_SPECTRUM_COLORS >> 1); i++) {
+//         // Normal
+//         specfast_colors[i] = spectrum_colors[i];
+//         specfast_colors[i << 3] = spectrum_colors[i];
+//         // Bright
+//         specfast_colors[i | 0x40] = spectrum_colors[i + (NUM_SPECTRUM_COLORS >> 1)];
+//         specfast_colors[(i << 3) | 0x40] = spectrum_colors[i + (NUM_SPECTRUM_COLORS >> 1)];
+//     }
+
 }
 
 void precalcAluBytes() {
+
+    // return;
 
     uint16_t specfast_colors[128]; // Array for faster color calc in Draw
 
@@ -89,9 +104,8 @@ void precalcAluBytes() {
     }
 
     // Alloc ALUbytes
-    AluBytes = new uint32_t*[16];
     for (int i = 0; i < 16; i++) {
-        AluBytes[i] = new uint32_t[256];
+        AluBytes[i] = (uint32_t *) heap_caps_malloc(0x400,MALLOC_CAP_INTERNAL | MALLOC_CAP_32BIT);
     }
 
     for (int i = 0; i < 16; i++) {
@@ -108,15 +122,15 @@ void precalcAluBytes() {
 
 }
 
-void deallocAluBytes() {
+// void deallocAluBytes() {
 
-    // For dealloc
-    for (int i = 0; i < 16; i++) {
-        delete[] AluBytes[i];
-    }
-    delete[] AluBytes;
+//     // For dealloc
+//     for (int i = 0; i < 16; i++) {
+//         delete[] AluBytes[i];
+//     }
+//     delete[] AluBytes;
 
-};
+// };
 
 uint16_t zxColor(uint8_t color, uint8_t bright) {
     if (bright) color += 8;
@@ -159,7 +173,6 @@ void VIDEO::Init() {
 
     precalcborder32();  // Precalc border 32 bits values
 
-    for (int i=0;i<312;i++) lastBorder[i]=8; // 8 -> Force repaint of border
     borderColor = 0;
     brd = border32[0];
 
@@ -183,7 +196,6 @@ void VIDEO::Init() {
 
 void VIDEO::Reset() {
 
-    for (int i=0;i<312;i++) lastBorder[i]=8; // 8 -> Force repaint of border
     borderColor = 7;
     brd = border32[7];    
 
@@ -367,7 +379,7 @@ void IRAM_ATTR VIDEO::MainScreenLB(unsigned int statestoadd, bool contended) {
 void IRAM_ATTR VIDEO::MainScreen(unsigned int statestoadd, bool contended) {
   
     uint8_t att, bmp;
-    
+
     if (contended)
         statestoadd += Z80Ops::is48 ? wait_st[(CPU::tstates + 1) % 224] : wait_st[(CPU::tstates + 3) % 228];
 
@@ -378,20 +390,11 @@ void IRAM_ATTR VIDEO::MainScreen(unsigned int statestoadd, bool contended) {
 
     for (int i=0; i < (statestoadd >> 2); i++) {    
 
-        // if ((coldraw_cnt>3) && (coldraw_cnt<36)) {
-        // if (coldraw_cnt<36) {
-
             att = grmem[attOffset++];       // get attribute byte
             bmp = (att & flashing) ? ~grmem[bmpOffset++] : grmem[bmpOffset++];
+            
             *lineptr32++ = AluBytes[bmp >> 4][att];
             *lineptr32++ = AluBytes[bmp & 0xF][att];
-
-        // } else {
-
-        //     *lineptr32++ = brd;
-        //     *lineptr32++ = brd;
-
-        // }
 
         if (++coldraw_cnt > 35) {      
             Draw = MainScreenRB;
@@ -400,11 +403,6 @@ void IRAM_ATTR VIDEO::MainScreen(unsigned int statestoadd, bool contended) {
             return;
         }
 
-        // if (++coldraw_cnt == 40) {      
-        //     Draw = ++linedraw_cnt == (is169 ? 196 : 216) ? &BottomBorder_Blank : &MainScreen_Blank;
-        //     return;
-        // }
-
     }
 
 }
@@ -412,7 +410,7 @@ void IRAM_ATTR VIDEO::MainScreen(unsigned int statestoadd, bool contended) {
 void IRAM_ATTR VIDEO::MainScreen_OSD(unsigned int statestoadd, bool contended) {
 
     uint8_t att, bmp;
-    
+
     if (contended)
         statestoadd += Z80Ops::is48 ? wait_st[(CPU::tstates + 1) % 224] : wait_st[(CPU::tstates + 3) % 228];
 
@@ -431,10 +429,13 @@ void IRAM_ATTR VIDEO::MainScreen_OSD(unsigned int statestoadd, bool contended) {
         }
 
         if ((coldraw_cnt>3) && (coldraw_cnt<36)) {
+
             att = grmem[attOffset++];       // get attribute byte
             bmp = (att & flashing) ? ~grmem[bmpOffset++] : grmem[bmpOffset++];
+
             *lineptr32++ = AluBytes[bmp >> 4][att];
             *lineptr32++ = AluBytes[bmp & 0xF][att];
+
         } else {
             *lineptr32++ = brd;
             *lineptr32++ = brd;
