@@ -18,7 +18,8 @@ message(STATUS "Generating build files for project ${PROJECT_NAME}")
 message(STATUS "CMAKE_SIZEOF_VOID_P: ${CMAKE_SIZEOF_VOID_P}")
 message(STATUS "CMAKE_GENERATOR_PLATFORM  ${CMAKE_GENERATOR_PLATFORM}")
 
-set(SDL2_PATH ../sdl2/sdl2-devel-win-2.24.2)
+#set(SDL2_PATH ../sdl2/sdl2-devel-win-2.24.2)
+set(SDL2_PATH ../sdl2/sdl2-devel-osx-2.26.0)
 #set(SDL2_IMAGE_PATH ../sdl2/sdl2-image-devel-win-2.6.2)
 
 # print_all_variables()

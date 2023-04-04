@@ -542,7 +542,7 @@ void I2S::startTX()
 	reset();
     i2s.lc_conf.val = 0; // I2S_OUT_DATA_BURST_EN | I2S_OUTDSCR_BURST_EN;
 	dmaBufferDescriptorActive = 0;
-	i2s.out_link.addr = (uint32_t)firstDescriptorAddress();
+	i2s.out_link.addr = (uint)(size_t)firstDescriptorAddress();
 	i2s.out_link.start = 1;
 	i2s.int_clr.val = i2s.int_raw.val;
 	i2s.int_ena.val = 0;
@@ -564,7 +564,7 @@ void I2S::startRX()
 	reset();
 	dmaBufferDescriptorActive = 0;
 	i2s.rx_eof_num = dmaBufferDescriptors[0].sampleCount();	//TODO: replace with cont of sample to be recorded
-	i2s.in_link.addr = (uint32_t)firstDescriptorAddress();
+	i2s.in_link.addr = (uint)(size_t)firstDescriptorAddress();
 	i2s.in_link.start = 1;
 	i2s.int_clr.val = i2s.int_raw.val;
 	i2s.int_ena.val = 0;
