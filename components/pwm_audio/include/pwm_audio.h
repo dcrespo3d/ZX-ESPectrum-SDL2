@@ -1,25 +1,22 @@
-// Copyright 2020 Espressif Systems (Shanghai) Co. Ltd.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
+/* SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #ifndef _PWM_AUDIO_H_
 #define _PWM_AUDIO_H_
-#ifndef ESP32_SDL2_WRAPPER
-#include "esp_err.h"
-#include "driver/ledc.h"
-#include "driver/timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "driver/ledc.h"
+
+#define PWM_AUDIO_VER_MAJOR 1
+#define PWM_AUDIO_VER_MINOR 1
+#define PWM_AUDIO_VER_PATCH 1
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#include "driver/gptimer.h"
+#else
+#include "driver/timer.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,10 +25,11 @@ extern "C" {
 /**
  * @brief Configuration parameters for pwm_audio_init function
  */
-typedef struct
-{
+typedef struct {
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
     timer_group_t tg_num;                /*!< timer group number (0 - 1) */
     timer_idx_t timer_num;               /*!< timer number  (0 - 1) */
+#endif
     int gpio_num_left;                   /*!< the LEDC output gpio_num, Left channel */
     int gpio_num_right;                  /*!< the LEDC output gpio_num, Right channel */
     ledc_channel_t ledc_channel_left;    /*!< LEDC channel (0 - 7), Corresponding to left channel*/
@@ -62,9 +60,9 @@ typedef enum {
 
 /**
  * @brief Initializes and configure the pwm audio.
- * 
+ *
  * @param cfg configurations - see pwm_audio_config_t struct
- * 
+ *
  * @return
  *     - ESP_OK Success
  *     - ESP_FAIL timer_group or ledc initialize failed
@@ -85,18 +83,18 @@ esp_err_t pwm_audio_deinit(void);
 
 /**
  * @brief Start to run pwm audio
- * 
+ *
  * @return
  *     - ESP_OK Success
- *     - ESP_ERR_INVALID_STATE pwm_audio not initialized or it already running 
+ *     - ESP_ERR_INVALID_STATE pwm_audio not initialized or it already running
  */
 esp_err_t pwm_audio_start(void);
 
 /**
  * @brief Stop pwm audio
- * 
+ *
  * @attention Only stop timer, and the pwm will keep to output. If you want to stop pwm output, call pwm_audio_deinit function
- * 
+ *
  * @return
  *     - ESP_OK Success
  *     - ESP_ERR_INVALID_STATE pwm_audio not initialized or it already idle
@@ -115,7 +113,7 @@ esp_err_t pwm_audio_stop(void);
  * data is written to the DMA buffer in pieces, the overall operation
  * may still take longer than this timeout.) Pass portMAX_DELAY for no
  * timeout.
- * 
+ *
  * @return
  *     - ESP_OK Success
  *     - ESP_FAIL Write encounter error
@@ -125,7 +123,7 @@ esp_err_t pwm_audio_write(uint8_t *inbuf, size_t len, size_t *bytes_written, Tic
 
 /**
  * @brief Set audio parameter, Similar to pwm_audio_set_sample_rate(), but also sets bit width.
- * 
+ *
  * @attention After start pwm audio, it can't modify parameters by call function pwm_audio_set_param.
  *            If you want to change the parameters, must stop pwm audio by call function pwm_audio_stop.
  *
@@ -152,7 +150,7 @@ esp_err_t pwm_audio_set_sample_rate(int rate);
 
 /**
  * @brief Set volume for pwm audio
- * 
+ *
  * @attention when the volume is too small, it will produce serious distortion
  *
  * @param volume Volume to set (-16 ~ 16).
@@ -168,7 +166,7 @@ esp_err_t pwm_audio_set_volume(int8_t volume);
 
 /**
  * @brief Get current volume
- * 
+ *
  * @param volume Pointer to volume
  *
  * @return
@@ -191,20 +189,18 @@ esp_err_t pwm_audio_get_param(int *rate, int *bits, int *ch);
 
 /**
  * @brief get pwm audio status
- * 
+ *
  * @param status current pwm_audio status
- * 
+ *
  * @return
  *     - ESP_OK Success
  */
 esp_err_t pwm_audio_get_status(pwm_audio_status_t *status);
 
+uint32_t pwm_audio_rbstats(void);
+
 #ifdef __cplusplus
 }
-#endif
-
-#else   // ESP32_SDL2_WRAPPER is defined
-#include "wrap_pwm_audio.h"
 #endif
 
 #endif

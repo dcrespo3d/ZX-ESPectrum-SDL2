@@ -45,6 +45,7 @@
 #include "FileZ80.h"
 #include "MemESP.h"
 #include "Tape.h"
+#include "ZXKeyb.h"
 #include "pwm_audio.h"
 
 #ifndef ESP32_SDL2_WRAPPER
@@ -180,6 +181,11 @@ static void persistLoad(uint8_t slotnumber)
     OSD::osdCenteredMsg(OSD_PSNA_LOADED, LEVEL_INFO);
 }
 
+#ifdef ZXKEYB
+#define REPDEL 140 // As in real ZX Spectrum (700 ms.)
+static int zxDelay = 0;
+#endif
+
 // OSD Main Loop
 void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
 
@@ -195,6 +201,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
             }
             vTaskDelay(5 / portTICK_PERIOD_MS);
         }
+        click();
     }
     else if (KeytoESP == fabgl::VK_F2) {
         string mFile = menuFile(FileUtils::MountPoint + DISK_SNA_DIR, MENU_SNA_TITLE[Config::lang],".sna.SNA.z80.Z80");
@@ -223,16 +230,20 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
         }
     }
     else if (KeytoESP == fabgl::VK_F6) {
+
         // Start .tap reproduction
         if (Tape::tapeFileName=="none") {
             OSD::osdCenteredMsg(OSD_TAPE_SELECT_ERR[Config::lang], LEVEL_WARN);
         } else {
             Tape::TAP_Play();
+            click();
         }
+
     }
     else if (KeytoESP == fabgl::VK_F7) {
         // Stop .tap reproduction
         Tape::TAP_Stop();
+        click();
     }
     else if (KeytoESP == fabgl::VK_F8) {
         // Show / hide OnScreen Stats
@@ -249,15 +260,18 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
                 VIDEO::DrawOSD43  = VIDEO::BottomBorder_OSD;
             VIDEO::OSD = true;
         }    
+        click();
     }
     else if (KeytoESP == fabgl::VK_F9) { // Volume down
         if (ESPectrum::aud_volume>-16) {
+                click();
                 ESPectrum::aud_volume--;
                 pwm_audio_set_volume(ESPectrum::aud_volume);
         }
     }
     else if (KeytoESP == fabgl::VK_F10) { // Volume up
         if (ESPectrum::aud_volume<0) {
+                click();                
                 ESPectrum::aud_volume++;
                 pwm_audio_set_volume(ESPectrum::aud_volume);
         }
@@ -363,7 +377,9 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
             else if (opt2 == 2) {
                 // Hard
                 Config::ram_file = NO_RAM_FILE;
+                #ifdef SNAPSHOT_LOAD_LAST
                 Config::save();
+                #endif
                 ESPectrum::reset();
             }
             else if (opt2 == 3) {
@@ -475,9 +491,9 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
                 else if (options_num == 5) {
                     // language
                     uint8_t opt2;
-                    opt2 = menuRun(MENU_LANGUAGE[Config::lang]);
-                    if (opt2) {
-                        if (opt2 == 1) {
+                    // opt2 = menuRun(MENU_LANGUAGE[Config::lang]);
+                    // if (opt2) {
+                    //     if (opt2 == 1) {
                             string Mnustr = MENU_INTERFACE_LANG[Config::lang];                            
                             std::size_t pos = Mnustr.find("[",0);
                             int nfind = 0;
@@ -496,52 +512,52 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
                                     Config::save();
                                 }
                             }
-                        } else if (opt2 == 2) {
-                            string Mnustr = MENU_KBD_LAYOUT[Config::lang];
-                            Mnustr.replace(Mnustr.find("[" + Config::kbd_layout),3,"[*");
-                            std::size_t pos = Mnustr.find("[",0);
-                            while (pos != string::npos) {
-                                if (Mnustr.at(pos + 1) != (char)42) {
-                                    Mnustr.replace(pos,3,"[ ");
-                                }
-                                pos = Mnustr.find("[",pos + 1);
-                            }
-                            opt2 = menuRun(Mnustr);
-                            if (opt2) {
-                                switch (opt2) {
-                                    case 1:
-                                        Config::kbd_layout = "US";
-                                        break;
-                                    case 2:
-                                        Config::kbd_layout = "ES";
-                                        break;
-                                    case 3:
-                                        Config::kbd_layout = "DE";
-                                        break;
-                                    case 4:
-                                        Config::kbd_layout = "FR";
-                                        break;
-                                    case 5:
-                                        Config::kbd_layout = "UK";
-                                }
-                                Config::save();
+                        // } else if (opt2 == 2) {
+                        //     string Mnustr = MENU_KBD_LAYOUT[Config::lang];
+                        //     Mnustr.replace(Mnustr.find("[" + Config::kbd_layout),3,"[*");
+                        //     std::size_t pos = Mnustr.find("[",0);
+                        //     while (pos != string::npos) {
+                        //         if (Mnustr.at(pos + 1) != (char)42) {
+                        //             Mnustr.replace(pos,3,"[ ");
+                        //         }
+                        //         pos = Mnustr.find("[",pos + 1);
+                        //     }
+                        //     opt2 = menuRun(Mnustr);
+                        //     if (opt2) {
+                        //         switch (opt2) {
+                        //             case 1:
+                        //                 Config::kbd_layout = "US";
+                        //                 break;
+                        //             case 2:
+                        //                 Config::kbd_layout = "ES";
+                        //                 break;
+                        //             case 3:
+                        //                 Config::kbd_layout = "DE";
+                        //                 break;
+                        //             case 4:
+                        //                 Config::kbd_layout = "FR";
+                        //                 break;
+                        //             case 5:
+                        //                 Config::kbd_layout = "UK";
+                        //         }
+                        //         Config::save();
                                 
-                                // TO DO: Crear funcion en objeto de teclado aparte para esto
-                                string cfgLayout = Config::kbd_layout;
-                                if(cfgLayout == "ES") 
-                                        ESPectrum::PS2Controller.keyboard()->setLayout(&fabgl::SpanishLayout);                
-                                else if(cfgLayout == "UK") 
-                                        ESPectrum::PS2Controller.keyboard()->setLayout(&fabgl::UKLayout);                
-                                else if(cfgLayout == "DE") 
-                                        ESPectrum::PS2Controller.keyboard()->setLayout(&fabgl::GermanLayout);                
-                                else if(cfgLayout == "FR") 
-                                        ESPectrum::PS2Controller.keyboard()->setLayout(&fabgl::FrenchLayout);            
-                                else 
-                                        ESPectrum::PS2Controller.keyboard()->setLayout(&fabgl::USLayout);
+                        //         // TO DO: Crear funcion en objeto de teclado aparte para esto
+                        //         string cfgLayout = Config::kbd_layout;
+                        //         if(cfgLayout == "ES") 
+                        //                 ESPectrum::PS2Controller.keyboard()->setLayout(&fabgl::SpanishLayout);                
+                        //         else if(cfgLayout == "UK") 
+                        //                 ESPectrum::PS2Controller.keyboard()->setLayout(&fabgl::UKLayout);                
+                        //         else if(cfgLayout == "DE") 
+                        //                 ESPectrum::PS2Controller.keyboard()->setLayout(&fabgl::GermanLayout);                
+                        //         else if(cfgLayout == "FR") 
+                        //                 ESPectrum::PS2Controller.keyboard()->setLayout(&fabgl::FrenchLayout);            
+                        //         else 
+                        //                 ESPectrum::PS2Controller.keyboard()->setLayout(&fabgl::USLayout);
 
-                            }
-                        }
-                    }
+                        //     }
+                        // }
+                    // }
                 }
                 else if (options_num == 6) {
                     // Other
@@ -579,16 +595,105 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP) {
             drawOSD();
             osdAt(2, 0);
             VIDEO::vga.setTextColor(OSD::zxColor(7, 0), OSD::zxColor(1, 0));
-            VIDEO::vga.print(OSD_ABOUT[Config::lang]);
+            VIDEO::vga.print(OSD_HELP[Config::lang]);
+
+            #ifdef ZXKEYB
+            zxDelay = REPDEL;
+            #endif
+
             while (1) {
+
+                #ifdef ZXKEYB
+        
+                ZXKeyb::process();
+
+                if (!bitRead(ZXKeyb::ZXcols[6], 0)) { // ENTER
+                    if (zxDelay == 0) {
+                        ESPectrum::PS2Controller.keyboard()->injectVirtualKey(fabgl::VK_RETURN, true, false);
+                        ESPectrum::PS2Controller.keyboard()->injectVirtualKey(fabgl::VK_RETURN, false, false);                
+                        zxDelay = REPDEL;
+                    }
+                } else
+                if (!bitRead(ZXKeyb::ZXcols[7], 0)) { // BREAK
+                    if (zxDelay == 0) {
+                        ESPectrum::PS2Controller.keyboard()->injectVirtualKey(fabgl::VK_ESCAPE, true, false);
+                        ESPectrum::PS2Controller.keyboard()->injectVirtualKey(fabgl::VK_ESCAPE, false, false);                        
+                        zxDelay = REPDEL;
+                    }
+                }
+
+                #endif
+
                 if (ESPectrum::PS2Controller.keyboard()->virtualKeyAvailable()) {
                     if (ESPectrum::readKbd(&Nextkey)) {
                         if(!Nextkey.down) continue;
                         if ((Nextkey.vk == fabgl::VK_F1) || (Nextkey.vk == fabgl::VK_ESCAPE) || (Nextkey.vk == fabgl::VK_RETURN)) break;
                     }
                 }
+
                 vTaskDelay(5 / portTICK_PERIOD_MS);
+
+                #ifdef ZXKEYB        
+                if (zxDelay > 0) zxDelay--;
+                #endif
+
             }
+
+            click();
+
+        }        
+        else if (opt == 6) {
+            // About
+            drawOSD();
+            osdAt(2, 0);
+            VIDEO::vga.setTextColor(OSD::zxColor(7, 0), OSD::zxColor(1, 0));
+            VIDEO::vga.print(OSD_ABOUT[Config::lang]);
+            
+            #ifdef ZXKEYB
+            zxDelay = REPDEL;
+            #endif
+            
+            while (1) {
+
+                #ifdef ZXKEYB
+        
+                ZXKeyb::process();
+
+                if (!bitRead(ZXKeyb::ZXcols[6], 0)) { // ENTER
+                    if (zxDelay == 0) {
+                        ESPectrum::PS2Controller.keyboard()->injectVirtualKey(fabgl::VK_RETURN, true, false);
+                        ESPectrum::PS2Controller.keyboard()->injectVirtualKey(fabgl::VK_RETURN, false, false);                
+                        zxDelay = REPDEL;
+                    }
+                } else
+                if (!bitRead(ZXKeyb::ZXcols[7], 0)) { // BREAK
+                    if (zxDelay == 0) {
+                        ESPectrum::PS2Controller.keyboard()->injectVirtualKey(fabgl::VK_ESCAPE, true, false);
+                        ESPectrum::PS2Controller.keyboard()->injectVirtualKey(fabgl::VK_ESCAPE, false, false);                        
+                        zxDelay = REPDEL;
+                    }
+                }
+
+                #endif
+
+                if (ESPectrum::PS2Controller.keyboard()->virtualKeyAvailable()) {
+                    if (ESPectrum::readKbd(&Nextkey)) {
+                        if(!Nextkey.down) continue;
+                        if ((Nextkey.vk == fabgl::VK_F1) || (Nextkey.vk == fabgl::VK_ESCAPE) || (Nextkey.vk == fabgl::VK_RETURN)) break;
+                    }
+                }
+
+                vTaskDelay(5 / portTICK_PERIOD_MS);
+                
+                #ifdef ZXKEYB        
+                if (zxDelay > 0) zxDelay--;
+                #endif
+
+
+            }
+
+            click();
+
         }        
     }
 }
@@ -716,6 +821,9 @@ void OSD::changeSnapshot(string filename)
     // osdCenteredMsg(MSG_SAVE_CONFIG, LEVEL_WARN, 0);
     
     Config::ram_file = filename;
+    
+    #ifdef SNAPSHOT_LOAD_LAST
     Config::save();
+    #endif
 
 }

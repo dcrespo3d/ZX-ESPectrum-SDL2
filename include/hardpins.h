@@ -56,4 +56,16 @@
 #define HSYNC_PIN 23
 #define VSYNC_PIN 15
 
+// Shift Register pins
+#define SR_CLK 0
+#define SR_LOAD 26
+#define SR_DATA 27
+
+// keyboard membrane 5 input pins
+#define KM_COL_0 3
+#define KM_COL_1 34
+#define KM_COL_2 35
+#define KM_COL_3 36
+#define KM_COL_4 39
+
 #endif // ESPectrum_hardpins_h

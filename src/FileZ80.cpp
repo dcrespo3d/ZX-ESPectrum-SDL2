@@ -366,12 +366,11 @@ bool FileZ80::load(string z80_fn)
     Tape::SaveStatus = SAVE_STOPPED;
     Tape::romLoading = false;
 
-    pwm_audio_stop();
-
     // Empty audio buffers
     for (int i=0;i<ESP_AUDIO_OVERSAMPLES_48;i++) ESPectrum::overSamplebuf[i]=0;
     for (int i=0;i<ESP_AUDIO_SAMPLES_48;i++) {
         ESPectrum::audioBuffer[i]=0;
+        ESPectrum::SamplebufAY[i]=0;        
     }
     ESPectrum::lastaudioBit=0;
 
@@ -388,17 +387,18 @@ bool FileZ80::load(string z80_fn)
         ESPectrum::Audio_freq = ESP_AUDIO_FREQ_128;
     }
 
-    pwm_audio_set_param(ESPectrum::Audio_freq,LEDC_TIMER_8_BIT,1);
+    ESPectrum::ESPoffset = 0;
 
-    // // Reset AY emulation
+    pwm_audio_stop();
+    pwm_audio_set_sample_rate(ESPectrum::Audio_freq);
+    pwm_audio_start();
+    pwm_audio_set_volume(ESPectrum::aud_volume);
+
+    // Reset AY emulation
     AySound::init();
     AySound::set_sound_format(ESPectrum::Audio_freq,1,8);
     AySound::set_stereo(AYEMU_MONO,NULL);
     AySound::reset();
-
-    pwm_audio_start();
-
-    // ESPectrum::Audio_restart = true;
 
     // Video sync
     ESPectrum::target = CPU::microsPerFrame();
