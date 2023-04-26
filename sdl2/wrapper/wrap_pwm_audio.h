@@ -153,7 +153,12 @@ inline esp_err_t pwm_audio_get_param(int *rate, int *bits, int *ch)
     return 0;
 }
 
-inline esp_err_t pwm_audio_get_status(pwm_audio_status_t *status)
+inline esp_err_t pwm_audio_get_status(pwm_audio_status_t* status)
+{
+    return 0;
+}
+
+inline esp_err_t pwm_audio_rbstats()
 {
     return 0;
 }

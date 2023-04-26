@@ -46,9 +46,9 @@
 #include "MemESP.h"
 #include "Tape.h"
 #include "ZXKeyb.h"
-#include "pwm_audio.h"
 
 #ifndef ESP32_SDL2_WRAPPER
+#include "pwm_audio.h"
 #include "esp_system.h"
 #include "esp_ota_ops.h"
 #include "fabgl.h"

@@ -276,7 +276,7 @@ static const char *MENU_JOY[2] = { MENU_JOY_EN, MENU_JOY_ES };
     "\n"\
     " Based on ZX-ESPectrum-Wiimote\n"\
     " (C)2020-2023 David Crespo\n"\
-    "\n"\ 
+    "\n"\
     " Inspired by previous projects\n"\
     " from Pete Todd and Rampa & Queru\n"\
     "\n"\
@@ -295,7 +295,7 @@ static const char *MENU_JOY[2] = { MENU_JOY_EN, MENU_JOY_ES };
     "\n"\
     " Basado en ZX-ESPectrum-Wiimote\n"\
     " (C)2020-2023 David Crespo\n"\
-    "\n"\ 
+    "\n"\
     " Inspirado en proyectos anteriores\n"\
     " de Pete Todd y Rampa & Queru\n"\
     "\n"\

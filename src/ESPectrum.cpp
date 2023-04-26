@@ -51,10 +51,10 @@
 #include "AySound.h"
 #include "Tape.h"
 #include "Z80_JLS/z80.h"
-#include "pwm_audio.h"
 #include "fabgl.h"
 
 #ifndef ESP32_SDL2_WRAPPER
+#include "pwm_audio.h"
 #include "ZXKeyb.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

@@ -105,6 +105,8 @@ inline void esp32_wrapper_sleep_menukey() {
 #define MALLOC_CAP_INTERNAL 0
 #define MALLOC_CAP_32BIT 0
 
+#define configMAX_PRIORITIES 0
+
 inline void* heap_caps_malloc(size_t size, uint32_t flags)
 {
     return malloc(size);
@@ -173,5 +175,6 @@ typedef enum {
     /** @endcond */
 } gpio_num_t;
 
+#include "wrap_pwm_audio.h"
 
 #endif // ESPectrum_config_h

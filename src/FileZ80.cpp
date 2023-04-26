@@ -45,7 +45,9 @@
 #include "OSDMain.h"
 #include "Config.h"
 #include "Tape.h"
+#ifndef ESP32_SDL2_WRAPPER
 #include "pwm_audio.h"
+#endif
 #include "AySound.h"
 
 ///////////////////////////////////////////////////////////////////////////////

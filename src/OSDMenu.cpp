@@ -55,7 +55,9 @@ using namespace std;
 #include "OSDMain.h"
 #include <math.h>
 #include "ZXKeyb.h"
+#ifndef ESP32_SDL2_WRAPPER
 #include "pwm_audio.h"
+#endif
 #include "Z80_JLS/z80.h"
 
 // #include <cctype>

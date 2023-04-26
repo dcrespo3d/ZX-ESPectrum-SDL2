@@ -46,7 +46,9 @@
 #include "FileSNA.h"
 #include "Tape.h"
 #include "AySound.h"
+#ifndef ESP32_SDL2_WRAPPER
 #include "pwm_audio.h"
+#endif
 #include <stdio.h>
 
 #include <inttypes.h>
